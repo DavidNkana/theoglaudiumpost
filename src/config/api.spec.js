@@ -73,11 +73,7 @@ describe("config/api", () => {
       API_BASE_URL,
     );
     // prodBaseUrl has no fallback: production must identify its backend.
-    expect(readEnv).toHaveBeenNthCalledWith(
-      3,
-      "VITE_PROD_API_BASE_URL",
-      "",
-    );
+    expect(readEnv).toHaveBeenNthCalledWith(3, "VITE_PROD_API_BASE_URL", "");
   });
 
   it("development MODE → API_URL resolves to the dev base url branch", async () => {
@@ -114,6 +110,21 @@ describe("config/api", () => {
     await expect(loadModule("production")).rejects.toThrow(
       "VITE_PROD_API_BASE_URL is required",
     );
+  });
+
+  it("production MODE rejects non-HTTPS backend URLs", async () => {
+    await expect(
+      loadModule("production", {
+        VITE_PROD_API_BASE_URL: "http://api.example/",
+      }),
+    ).rejects.toThrow("production API base URL must use HTTPS");
+  });
+
+  it("production MODE canonicalizes a single trailing slash", async () => {
+    const mod = await loadModule("production", {
+      VITE_PROD_API_BASE_URL: "https://api.example/v1",
+    });
+    expect(mod.API_URL).toBe("https://api.example/v1/");
   });
 
   it("test MODE with VITE_TEST unset falls back through devBaseUrl", async () => {

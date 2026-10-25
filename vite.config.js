@@ -1,13 +1,33 @@
 import { fileURLToPath, URL } from "node:url";
 
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import vue from "@vitejs/plugin-vue";
 import { VitePWA } from "vite-plugin-pwa";
 import vueDevTools from "vite-plugin-vue-devtools";
+import { normalizeApiBaseUrl } from "./src/config/api-url.js";
+
+function validateProductionApiUrl() {
+  return {
+    name: "validate-production-api-url",
+    config(_, { mode }) {
+      if (mode !== "production") return;
+
+      const env = loadEnv(mode, process.cwd(), "");
+      try {
+        normalizeApiBaseUrl(env.VITE_PROD_API_BASE_URL, { mode });
+      } catch (error) {
+        throw new Error(
+          `[production-api-config] VITE_PROD_API_BASE_URL is invalid: ${error.message}`,
+        );
+      }
+    },
+  };
+}
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
+    validateProductionApiUrl(),
     vue(),
     // Custom plugin to handle markdown files in development mode
     {

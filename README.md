@@ -38,12 +38,14 @@ mode:
 - `VITE_TEST_API_BASE_URL` for Vitest/test mode
 - `VITE_PROD_API_BASE_URL` for production builds, including Vercel (required)
 
-Values must be the real Spring Boot API base URL, including its API path (and a
-trailing slash where required by the backend). Production intentionally fails
-with a configuration error when `VITE_PROD_API_BASE_URL` is missing; it must not
-fall back to the frontend origin and return the SPA HTML for API calls. No
-backend URL or secret is provided in this repository. Do not commit `.env`
-files or credentials.
+Values must be the real Spring Boot API base URL, including its API path. The
+frontend canonicalizes the value to exactly one trailing slash; query strings,
+fragments, and embedded credentials are rejected. Production requires an
+absolute HTTPS URL and `npm run build` fails clearly when it is missing or
+invalid. Development and tests may use the documented `/api/v1/` same-origin
+placeholder (or an explicit local/test URL). Production must not fall back to
+the frontend origin and return SPA HTML for API calls. No backend URL or secret
+is provided in this repository. Do not commit `.env` files or credentials.
 
 ## Vercel
 
