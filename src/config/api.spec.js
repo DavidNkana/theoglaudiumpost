@@ -52,13 +52,13 @@ describe("config/api", () => {
   });
 
   it("exposes the same-origin API_BASE_URL constant", async () => {
-    const mod = await loadModule("production");
+    const mod = await loadModule("test");
     expect(mod.API_BASE_URL).toBe(API_BASE_URL);
     expect(mod.API_BASE_URL).not.toContain("/laudium/api/");
   });
 
   it("reads the three env keys with the correct fallback chain", async () => {
-    await loadModule("production");
+    await loadModule("test");
 
     // devBaseUrl falls back to API_BASE_URL
     expect(readEnv).toHaveBeenNthCalledWith(
@@ -72,11 +72,11 @@ describe("config/api", () => {
       "VITE_TEST_API_BASE_URL",
       API_BASE_URL,
     );
-    // prodBaseUrl falls back to API_BASE_URL
+    // prodBaseUrl has no fallback: production must identify its backend.
     expect(readEnv).toHaveBeenNthCalledWith(
       3,
       "VITE_PROD_API_BASE_URL",
-      API_BASE_URL,
+      "",
     );
   });
 
@@ -110,6 +110,12 @@ describe("config/api", () => {
     expect(mod.default.API_URL).toBe("https://prod.example/");
   });
 
+  it("production MODE fails clearly when the backend URL is missing", async () => {
+    await expect(loadModule("production")).rejects.toThrow(
+      "VITE_PROD_API_BASE_URL is required",
+    );
+  });
+
   it("test MODE with VITE_TEST unset falls back through devBaseUrl", async () => {
     // Only the dev key is set; testBaseUrl should inherit devBaseUrl's value.
     const mod = await loadModule("test", {
@@ -119,7 +125,7 @@ describe("config/api", () => {
   });
 
   it("default export bundles both constants", async () => {
-    const mod = await loadModule("production");
+    const mod = await loadModule("test");
     expect(mod.default).toEqual({
       API_BASE_URL: mod.API_BASE_URL,
       API_URL: mod.API_URL,

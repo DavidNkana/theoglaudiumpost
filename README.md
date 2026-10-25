@@ -36,11 +36,14 @@ mode:
 
 - `VITE_DEV_API_BASE_URL` for `npm run dev`
 - `VITE_TEST_API_BASE_URL` for Vitest/test mode
-- `VITE_PROD_API_BASE_URL` for production builds, including Vercel
+- `VITE_PROD_API_BASE_URL` for production builds, including Vercel (required)
 
 Values must be the real Spring Boot API base URL, including its API path (and a
-trailing slash where required by the backend). No backend URL or secret is
-provided in this repository. Do not commit `.env` files or credentials.
+trailing slash where required by the backend). Production intentionally fails
+with a configuration error when `VITE_PROD_API_BASE_URL` is missing; it must not
+fall back to the frontend origin and return the SPA HTML for API calls. No
+backend URL or secret is provided in this repository. Do not commit `.env`
+files or credentials.
 
 ## Vercel
 
@@ -50,9 +53,12 @@ Import this repository with the project root set to the repository root:
 - Build command: `npm run build`
 - Output directory: `dist`
 - Install command: `npm install` (Vercel may use its detected equivalent)
-- Environment variable: set `VITE_PROD_API_BASE_URL` to the deployed backend API base URL
+- Environment variable: set `VITE_PROD_API_BASE_URL` to the deployed backend API base URL **before building**
 
-`vercel.json` supplies the SPA fallback required by Vue Router history mode.
+`vercel.json` supplies the SPA fallback required by Vue Router history mode, but
+explicitly excludes `/api/v1/*`. API requests therefore reach the configured
+backend URL rather than being rewritten to `/index.html`; Vercel is not a
+backend proxy.
 Vercel hosts only this static frontend; it does not run the backend or MariaDB.
 
 ## Backend separation
