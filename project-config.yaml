@@ -1,0 +1,25 @@
+schema_version: "1.0"
+standard_version: 2026-05-18
+generated_by:
+  plugin: opencode-deployment-governance
+  plugin_version: 0.1.0
+project:
+  name: LaudiumAPP
+  deploy_type: docker-compose
+  production_branch: main
+  legacy_migration_required: false
+environments:
+  localtest:
+    deploy_file: deploy/localtest.yaml
+    runtime_config_file: deploy/localtest_config_runtime.yaml
+    approval_required: false
+    production: false
+  production:
+    deploy_file: deploy/production.yaml
+    runtime_config_file: deploy/production_config_runtime.yaml
+    approval_required: true
+    production: true
+promotion:
+  production_requires_test_evidence: true
+  max_test_evidence_age_hours: 24
+  production_requires_test_from_production_branch: true

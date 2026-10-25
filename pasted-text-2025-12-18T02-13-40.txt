@@ -1,0 +1,925 @@
+package com.laudiumbiz.Laudiumbiz.Services;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.laudiumbiz.Laudiumbiz.Models.ArticleGenerated;
+import com.laudiumbiz.Laudiumbiz.Models.SourceArticle;
+import com.laudiumbiz.Laudiumbiz.Utils.Utils;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import java.io.IOException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+/**
+ * PURPOSE: Provides AI-powered content generation using MiniMax M2 model with tool calling and interleaved thinking.
+ * Implements NewsAIService for article generation and source article retrieval with web search capabilities.
+ * Supports function calling for web search and web scraping operations.
+ *
+ * KEY METHODS:
+ * - generateArticle(String prompt): Generates structured articles with title, content, summary, slug, and sources
+ * - sourceAll(): Retrieves source articles using web search tool with interleaved thinking
+ * - searchWeb(List<String> queries, List<String> tags): Performs web searches using function calling
+ * - scrapeUrl(String url): Scrapes web page content for article research
+ * - chat(String prompt, List<Map<String, Object>> tools): Low-level chat completion with tool support
+ *
+ * FEATURES:
+ * - Interleaved thinking with <think>...</think> tags preserved in context
+ * - OpenAI-compatible API format
+ * - Function calling / tool use support
+ * - Web search and scraping tools
+ *
+ * INTEGRATIONS: MiniMax M2 API via OpenAI-compatible endpoint
+ *
+ * @author Claude
+ */
+@Service("miniMaxService")
+public class MiniMaxService implements NewsAIService {
+
+    private static final Logger logger = Logger.getLogger(MiniMaxService.class.getName());
+
+    @Value("${minimax.api.key:}")
+    private String apiKey;
+
+    @Value("${minimax.api.url:https://api.minimax.io/v1}")
+    private String apiUrl;
+
+    @Value("${minimax.model:MiniMax-M2}")
+    private String model;
+
+    private final RestTemplate restTemplate = new RestTemplate();
+    private final Gson gson = Utils.getGson();
+    private final SourceArticlePersistenceService sourceArticlePersistenceService;
+
+    public MiniMaxService(SourceArticlePersistenceService sourceArticlePersistenceService) {
+        this.sourceArticlePersistenceService = sourceArticlePersistenceService;
+    }
+
+    /**
+     * Create HTTP headers for MiniMax API request
+     */
+    private HttpHeaders createHeaders() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(apiKey);
+        return headers;
+    }
+
+    /**
+     * Get the chat completions endpoint URL
+     */
+    private String getChatCompletionsUrl() {
+        return apiUrl + "/chat/completions";
+    }
+
+    /**
+     * Define the web search tool for function calling
+     */
+    private Map<String, Object> getWebSearchTool() {
+        Map<String, Object> parameters = new LinkedHashMap<>();
+        parameters.put("type", "object");
+
+        Map<String, Object> properties = new LinkedHashMap<>();
+
+        Map<String, Object> queryList = new LinkedHashMap<>();
+        queryList.put("type", "array");
+        queryList.put("items", Map.of("type", "string"));
+        queryList.put("description", "List of search queries to execute");
+        properties.put("query_list", queryList);
+
+        Map<String, Object> queryTag = new LinkedHashMap<>();
+        queryTag.put("type", "array");
+        queryTag.put("items", Map.of("type", "string"));
+        queryTag.put("description", "Categories/tags for the search (e.g., 'news', 'technology', 'local')");
+        properties.put("query_tag", queryTag);
+
+        parameters.put("properties", properties);
+        parameters.put("required", List.of("query_list"));
+
+        Map<String, Object> function = new LinkedHashMap<>();
+        function.put("name", "search_web");
+        function.put("description", "Search the web for current news, articles, and information. Returns relevant results based on query.");
+        function.put("parameters", parameters);
+
+        Map<String, Object> tool = new LinkedHashMap<>();
+        tool.put("type", "function");
+        tool.put("function", function);
+
+        return tool;
+    }
+
+    /**
+     * Define the web scraper tool for function calling
+     */
+    private Map<String, Object> getWebScraperTool() {
+        Map<String, Object> parameters = new LinkedHashMap<>();
+        parameters.put("type", "object");
+
+        Map<String, Object> properties = new LinkedHashMap<>();
+
+        Map<String, Object> url = new LinkedHashMap<>();
+        url.put("type", "string");
+        url.put("description", "The URL of the web page to scrape");
+        properties.put("url", url);
+
+        Map<String, Object> extractType = new LinkedHashMap<>();
+        extractType.put("type", "string");
+        extractType.put("enum", List.of("article", "summary", "full_text", "metadata"));
+        extractType.put("description", "Type of content to extract from the page");
+        properties.put("extract_type", extractType);
+
+        parameters.put("properties", properties);
+        parameters.put("required", List.of("url"));
+
+        Map<String, Object> function = new LinkedHashMap<>();
+        function.put("name", "scrape_webpage");
+        function.put("description", "Fetch and extract content from a web page URL. Use this to get full article text or verify sources.");
+        function.put("parameters", parameters);
+
+        Map<String, Object> tool = new LinkedHashMap<>();
+        tool.put("type", "function");
+        tool.put("function", function);
+
+        return tool;
+    }
+
+    /**
+     * Get all available tools for function calling
+     */
+    private List<Map<String, Object>> getAllTools() {
+        return List.of(getWebSearchTool(), getWebScraperTool());
+    }
+
+    /**
+     * Parse tool calls from MiniMax M2 XML format
+     * Format: <minimax:tool_call><invoke name="..."><parameter name="...">value</parameter></invoke></minimax:tool_call>
+     */
+    private List<Map<String, Object>> parseToolCalls(String content) {
+        List<Map<String, Object>> toolCalls = new ArrayList<>();
+
+        if (content == null || !content.contains("<minimax:tool_call>")) {
+            return toolCalls;
+        }
+
+        Pattern toolCallPattern = Pattern.compile("<minimax:tool_call>(.*?)</minimax:tool_call>", Pattern.DOTALL);
+        Pattern invokePattern = Pattern.compile("<invoke name=\"([^\"]+)\">(.*?)</invoke>", Pattern.DOTALL);
+        Pattern paramPattern = Pattern.compile("<parameter name=\"([^\"]+)\">([^<]*)</parameter>", Pattern.DOTALL);
+
+        Matcher toolCallMatcher = toolCallPattern.matcher(content);
+        while (toolCallMatcher.find()) {
+            String toolCallContent = toolCallMatcher.group(1);
+
+            Matcher invokeMatcher = invokePattern.matcher(toolCallContent);
+            while (invokeMatcher.find()) {
+                String functionName = invokeMatcher.group(1);
+                String invokeContent = invokeMatcher.group(2);
+
+                Map<String, Object> arguments = new LinkedHashMap<>();
+                Matcher paramMatcher = paramPattern.matcher(invokeContent);
+                while (paramMatcher.find()) {
+                    String paramName = paramMatcher.group(1);
+                    String paramValue = paramMatcher.group(2).trim();
+
+                    // Try to parse as JSON array if it looks like one
+                    if (paramValue.startsWith("[") && paramValue.endsWith("]")) {
+                        try {
+                            JsonArray arr = JsonParser.parseString(paramValue).getAsJsonArray();
+                            List<String> list = new ArrayList<>();
+                            for (JsonElement el : arr) {
+                                list.add(el.getAsString());
+                            }
+                            arguments.put(paramName, list);
+                        } catch (Exception e) {
+                            arguments.put(paramName, paramValue);
+                        }
+                    } else {
+                        arguments.put(paramName, paramValue);
+                    }
+                }
+
+                Map<String, Object> toolCall = new LinkedHashMap<>();
+                toolCall.put("name", functionName);
+                toolCall.put("arguments", arguments);
+                toolCalls.add(toolCall);
+            }
+        }
+
+        return toolCalls;
+    }
+
+    /**
+     * Extract thinking content from response (preserves interleaved thinking)
+     */
+    private String extractThinking(String content) {
+        if (content == null) return "";
+
+        Pattern thinkPattern = Pattern.compile("<think>(.*?)</think>", Pattern.DOTALL);
+        Matcher matcher = thinkPattern.matcher(content);
+        StringBuilder thinking = new StringBuilder();
+        while (matcher.find()) {
+            if (thinking.length() > 0) thinking.append("\n");
+            thinking.append(matcher.group(1).trim());
+        }
+        return thinking.toString();
+    }
+
+    /**
+     * Remove thinking tags from content for final output
+     */
+    private String removeThinking(String content) {
+        if (content == null) return "";
+        return content.replaceAll("<think>.*?</think>", "").trim();
+    }
+
+    /**
+     * Parse an argument value that might be a List or a JSON String representation of an array.
+     * This handles both cases since Gson may deserialize array arguments as either type.
+     *
+     * @ModifiedByJunie 2025-12-10
+     */
+    @SuppressWarnings("unchecked")
+    private List<String> parseListArgument(Object value) {
+        if (value == null) {
+            return List.of();
+        }
+        if (value instanceof List) {
+            return (List<String>) value;
+        }
+        if (value instanceof String) {
+            String strValue = (String) value;
+            // Try to parse as JSON array
+            if (strValue.startsWith("[") && strValue.endsWith("]")) {
+                try {
+                    JsonArray arr = JsonParser.parseString(strValue).getAsJsonArray();
+                    List<String> list = new ArrayList<>();
+                    for (JsonElement el : arr) {
+                        list.add(el.getAsString());
+                    }
+                    return list;
+                } catch (Exception e) {
+                    // Not a valid JSON array, treat as single value
+                    return List.of(strValue);
+                }
+            }
+            // Single string value
+            return List.of(strValue);
+        }
+        return List.of();
+    }
+
+    /**
+     * Execute a simulated web search (in production, integrate with actual search API)
+     * Returns mock results - replace with actual search API integration
+     *
+     * @ModifiedByJunie 2025-12-10
+     */
+    @SuppressWarnings("unchecked")
+    private String executeWebSearch(Map<String, Object> arguments) {
+        // Handle both List and String representations of arrays (JSON parsing may return either)
+        List<String> queries = parseListArgument(arguments.get("query_list"));
+        List<String> tags = parseListArgument(arguments.get("query_tag"));
+
+        logger.info("Executing web search for queries: " + queries + ", tags: " + tags);
+
+        // In production, integrate with a real search API like SerpAPI, Bing Search, or Google Custom Search
+        // For now, return a structured placeholder response
+        List<Map<String, Object>> results = new ArrayList<>();
+        for (String query : queries) {
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("query", query);
+            result.put("title", "Search result for: " + query);
+            result.put("url", "https://example.com/search?q=" + query.replace(" ", "+"));
+            result.put("snippet", "This is a placeholder search result. In production, integrate with a real search API.");
+            result.put("timestamp", LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME));
+            results.add(result);
+        }
+
+        return gson.toJson(Map.of(
+                "status", "success",
+                "query_count", queries.size(),
+                "results", results,
+                "note", "Integrate with actual search API for real results"
+        ));
+    }
+
+    /**
+     * Execute a simulated web scrape (in production, use actual web scraping)
+     */
+    private String executeWebScrape(Map<String, Object> arguments) {
+        String url = (String) arguments.getOrDefault("url", "");
+        String extractType = (String) arguments.getOrDefault("extract_type", "summary");
+
+        logger.info("Executing web scrape for URL: " + url + ", extract_type: " + extractType);
+
+        // In production, use Jsoup or similar to scrape actual content
+        // For now, return a placeholder response
+        return gson.toJson(Map.of(
+                "status", "success",
+                "url", url,
+                "extract_type", extractType,
+                "content", "This is placeholder scraped content. In production, integrate with Jsoup or similar.",
+                "timestamp", LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME),
+                "note", "Integrate with actual web scraping library for real content"
+        ));
+    }
+
+    /**
+     * Execute tool call and return result
+     */
+    private String executeToolCall(Map<String, Object> toolCall) {
+        String name = (String) toolCall.get("name");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> arguments = (Map<String, Object>) toolCall.get("arguments");
+
+        return switch (name) {
+            case "search_web" -> executeWebSearch(arguments);
+            case "scrape_webpage" -> executeWebScrape(arguments);
+            default -> gson.toJson(Map.of("error", "Unknown tool: " + name));
+        };
+    }
+
+    /**
+     * Make a chat completion request with optional tool support
+     */
+    public Map<String, Object> chatCompletion(List<Map<String, Object>> messages, List<Map<String, Object>> tools, boolean toolChoice) throws IOException {
+        if (apiKey == null || apiKey.isEmpty()) {
+            throw new IOException("MiniMax API key not configured. Set minimax.api.key in application.properties");
+        }
+
+        Map<String, Object> requestBody = new LinkedHashMap<>();
+        requestBody.put("model", model);
+        requestBody.put("messages", messages);
+        requestBody.put("temperature", 1.0); // Recommended for MiniMax M2
+
+        if (tools != null && !tools.isEmpty()) {
+            requestBody.put("tools", tools);
+            requestBody.put("tool_choice", toolChoice ? "auto" : "none");
+        }
+
+        try {
+            HttpHeaders headers = createHeaders();
+            HttpEntity<String> entity = new HttpEntity<>(gson.toJson(requestBody), headers);
+
+            logger.info("Making MiniMax API request to: " + getChatCompletionsUrl());
+            logger.fine("Request body: " + gson.toJson(requestBody));
+
+            ResponseEntity<String> response = restTemplate.exchange(
+                    getChatCompletionsUrl(),
+                    HttpMethod.POST,
+                    entity,
+                    String.class
+            );
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                JsonObject responseJson = JsonParser.parseString(response.getBody()).getAsJsonObject();
+
+                // Extract the assistant's message content
+                JsonArray choices = responseJson.getAsJsonArray("choices");
+                if (choices != null && choices.size() > 0) {
+                    JsonObject firstChoice = choices.get(0).getAsJsonObject();
+                    JsonObject message = firstChoice.getAsJsonObject("message");
+
+                    String content = message.has("content") && !message.get("content").isJsonNull()
+                            ? message.get("content").getAsString()
+                            : "";
+
+                    // Check for tool calls in the response
+                    List<Map<String, Object>> parsedToolCalls = new ArrayList<>();
+
+                    // First check OpenAI-style tool_calls
+                    if (message.has("tool_calls") && message.get("tool_calls").isJsonArray()) {
+                        JsonArray toolCallsArray = message.getAsJsonArray("tool_calls");
+                        for (JsonElement tc : toolCallsArray) {
+                            JsonObject tcObj = tc.getAsJsonObject();
+                            JsonObject fn = tcObj.getAsJsonObject("function");
+                            Map<String, Object> toolCall = new LinkedHashMap<>();
+                            toolCall.put("id", tcObj.has("id") ? tcObj.get("id").getAsString() : UUID.randomUUID().toString());
+                            toolCall.put("name", fn.get("name").getAsString());
+                            toolCall.put("arguments", gson.fromJson(fn.get("arguments").getAsString(), Map.class));
+                            parsedToolCalls.add(toolCall);
+                        }
+                    }
+
+                    // Also check for XML-style tool calls in content (MiniMax native format)
+                    if (content.contains("<minimax:tool_call>")) {
+                        parsedToolCalls.addAll(parseToolCalls(content));
+                    }
+
+                    Map<String, Object> result = new LinkedHashMap<>();
+                    result.put("content", content);
+                    result.put("thinking", extractThinking(content));
+                    result.put("tool_calls", parsedToolCalls);
+                    result.put("finish_reason", firstChoice.has("finish_reason")
+                            ? firstChoice.get("finish_reason").getAsString()
+                            : "stop");
+
+                    return result;
+                }
+
+                throw new IOException("No choices in MiniMax API response");
+            } else {
+                throw new IOException("MiniMax API error: " + response.getStatusCode());
+            }
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "MiniMax API error: " + e.getMessage(), e);
+            throw new IOException("Error calling MiniMax API: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Chat with tool calling loop - handles multiple rounds of tool execution
+     * Uses OpenAI-compatible format for tool calls and results since we're using the OpenAI-compatible endpoint.
+     * Each tool call gets an ID and each tool result references that ID via tool_call_id.
+     *
+     * @ModifiedByJunie 2025-12-10
+     */
+    public String chatWithTools(String systemPrompt, String userPrompt, int maxToolRounds) throws IOException {
+        List<Map<String, Object>> messages = new ArrayList<>();
+
+        // Add system message
+        messages.add(Map.of("role", "system", "content", systemPrompt));
+
+        // Add user message
+        messages.add(Map.of("role", "user", "content", userPrompt));
+
+        List<Map<String, Object>> tools = getAllTools();
+
+        for (int round = 0; round < maxToolRounds; round++) {
+            Map<String, Object> response = chatCompletion(messages, tools, true);
+
+            String content = (String) response.get("content");
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> toolCalls = (List<Map<String, Object>>) response.get("tool_calls");
+
+            // If no tool calls, add simple assistant message and return
+            if (toolCalls == null || toolCalls.isEmpty()) {
+                Map<String, Object> assistantMessage = new LinkedHashMap<>();
+                assistantMessage.put("role", "assistant");
+                assistantMessage.put("content", content != null ? content : "");
+                messages.add(assistantMessage);
+                return removeThinking(content != null ? content : "");
+            }
+
+            // Build assistant message with tool_calls in OpenAI format
+            Map<String, Object> assistantMessage = new LinkedHashMap<>();
+            assistantMessage.put("role", "assistant");
+            assistantMessage.put("content", content != null ? content : "");
+
+            // Format tool_calls and store IDs for matching with results
+            List<Map<String, Object>> formattedToolCalls = new ArrayList<>();
+            List<String> toolCallIds = new ArrayList<>();
+
+            for (int i = 0; i < toolCalls.size(); i++) {
+                Map<String, Object> toolCall = toolCalls.get(i);
+                // Generate a consistent ID format: call_function_<timestamp>_<index>
+                String toolCallId = toolCall.get("id") != null && !((String) toolCall.get("id")).isEmpty()
+                        ? (String) toolCall.get("id")
+                        : "call_function_" + System.currentTimeMillis() + "_" + i;
+                String functionName = (String) toolCall.get("name");
+                @SuppressWarnings("unchecked")
+                Map<String, Object> arguments = (Map<String, Object>) toolCall.get("arguments");
+
+                Map<String, Object> formattedCall = new LinkedHashMap<>();
+                formattedCall.put("id", toolCallId);
+                formattedCall.put("type", "function");
+                formattedCall.put("function", Map.of(
+                        "name", functionName,
+                        "arguments", arguments != null ? gson.toJson(arguments) : "{}"
+                ));
+                formattedToolCalls.add(formattedCall);
+                toolCallIds.add(toolCallId);
+
+                // Store the ID back in the toolCall for later use
+                toolCall.put("id", toolCallId);
+            }
+            assistantMessage.put("tool_calls", formattedToolCalls);
+            messages.add(assistantMessage);
+
+            // Execute each tool call and add result with OpenAI format (separate message per result)
+            for (int i = 0; i < toolCalls.size(); i++) {
+                Map<String, Object> toolCall = toolCalls.get(i);
+                String result = executeToolCall(toolCall);
+                String toolCallId = toolCallIds.get(i);
+
+                // Add tool result message in OpenAI format with tool_call_id
+                Map<String, Object> toolMessage = new LinkedHashMap<>();
+                toolMessage.put("role", "tool");
+                toolMessage.put("tool_call_id", toolCallId);
+                toolMessage.put("content", result);
+                messages.add(toolMessage);
+            }
+        }
+
+        // If we've exhausted tool rounds, get final response without tools
+        Map<String, Object> finalResponse = chatCompletion(messages, null, false);
+        return removeThinking((String) finalResponse.get("content"));
+    }
+
+    /**
+     * Simple chat completion without tool calling - for direct generation tasks.
+     *
+     * @ModifiedByJunie 2025-12-10
+     */
+    public String chatSimple(String systemPrompt, String userPrompt) throws IOException {
+        List<Map<String, Object>> messages = new ArrayList<>();
+        messages.add(Map.of("role", "system", "content", systemPrompt));
+        messages.add(Map.of("role", "user", "content", userPrompt));
+
+        Map<String, Object> response = chatCompletion(messages, null, false);
+        return removeThinking((String) response.get("content"));
+    }
+
+    /**
+     * Extract JSON object from response text, handling various formats the model might return.
+     * Looks for JSON object starting with { and ending with }
+     *
+     * @ModifiedByJunie 2025-12-10
+     */
+    private String extractJsonObject(String text) {
+        if (text == null || text.isEmpty()) {
+            return "{}";
+        }
+
+        // Remove markdown code fences
+        String cleaned = text
+                .replaceAll("```json\\s*", "")
+                .replaceAll("```\\s*", "")
+                .trim();
+
+        // Find the first { and last }
+        int startIdx = cleaned.indexOf('{');
+        int endIdx = cleaned.lastIndexOf('}');
+
+        if (startIdx != -1 && endIdx != -1 && endIdx > startIdx) {
+            return cleaned.substring(startIdx, endIdx + 1);
+        }
+
+        logger.warning("Could not find JSON object in response: " + text.substring(0, Math.min(200, text.length())));
+        return "{}";
+    }
+
+    /**
+     * Generate article using MiniMax M2 with interleaved thinking and web search tools.
+     * Uses chatWithTools() to enable search_web and scrape_webpage for fact verification.
+     *
+     * @ModifiedByJunie 2025-12-11
+     */
+    @Override
+    public ArticleGenerated generateArticle(String prompt) throws IOException {
+        logger.info("Generating article with MiniMax M2 for prompt: " + prompt);
+
+        String systemPrompt = """
+            You are an INVESTIGATIVE JOURNALIST committed to ACCURACY and TRUTH.
+            Generate a comprehensive, fact-checked article based on the given prompt.
+            The article should be 400-800 words, written in a professional journalistic tone.
+
+            RESEARCH REQUIREMENTS:
+            1. Use the search_web tool to find and verify facts from multiple sources.
+            2. Use the scrape_webpage tool to get detailed content from source URLs when needed.
+            3. Every factual claim MUST be attributed: 'According to [Source]...', 'As reported by...'
+            4. Include 2-4 direct quotes from officials, experts, or witnesses.
+            5. Cross-reference facts across sources. Note any discrepancies.
+            6. If something cannot be verified, say 'Unverified reports suggest...'
+
+            Think carefully about what searches to perform to verify the information.
+            Use your interleaved thinking to reason about the best approach.
+
+            IMPORTANT: After your research, output ONLY a valid JSON object with NO text before or after.
+            Do NOT include markdown code fences. Start your final response directly with { and end with }
+
+            The JSON object must have these exact fields:
+            {
+                "title": "A clean, accurate headline",
+                "article": "The main article content - EACH PARAGRAPH MUST BE WRAPPED WITH <p> TAGS",
+                "summary": "A concise summary (2-3 sentences) of verified facts",
+                "slug": "url-friendly-version-of-title (lowercase, hyphens, no special characters)",
+                "sources": ["https://actual-source1.com", "https://actual-source2.com"]
+            }
+
+            CRITICAL: The article field MUST have each paragraph wrapped in <p></p> tags. Example:
+            "<p>First paragraph with source attribution.</p><p>Second paragraph with quotes.</p>"
+
+            Your lens: You are a local reporter for the Laudium community. Where appropriate, add context
+            about Laudium or surrounding areas. Our main readers are the Muslim community - write from
+            their perspective while maintaining strict journalistic accuracy.
+            """;
+
+        // Use chatWithTools to enable search_web and scrape_webpage with interleaved thinking
+        String response = chatWithTools(systemPrompt, prompt, 3);
+        logger.info("MiniMax article response received, length: " + response.length());
+
+        // Parse JSON response
+        try {
+            String jsonContent = extractJsonObject(response);
+            logger.fine("Extracted JSON: " + jsonContent.substring(0, Math.min(500, jsonContent.length())));
+
+            ArticleGenerated article = gson.fromJson(jsonContent, ArticleGenerated.class);
+
+            // Generate slug if not provided
+            if (article.getSlug() == null || article.getSlug().isEmpty()) {
+                article.setSlug(generateSlug(article.getTitle()));
+            }
+
+            logger.info("Successfully generated article: " + article.getTitle());
+            return article;
+        } catch (Exception e) {
+            logger.warning("Failed to parse article JSON, returning raw content: " + e.getMessage());
+            return new ArticleGenerated("Generated Article", response, "", generateSlug("Generated Article"));
+        }
+    }
+
+    /**
+     * Generate URL-friendly slug from title
+     */
+    private String generateSlug(String title) {
+        if (title == null || title.isEmpty()) {
+            return "generated-article";
+        }
+        return title.toLowerCase()
+                .replaceAll("\\s+", "-")
+                .replaceAll("[^a-z0-9-]", "")
+                .replaceAll("-+", "-")
+                .replaceAll("^-|-$", "");
+    }
+
+    /**
+     * Extract JSON array from response text, handling various formats the model might return.
+     * Looks for JSON array starting with [ and ending with ]
+     *
+     * @ModifiedByJunie 2025-12-10
+     */
+    private String extractJsonArray(String text) {
+        if (text == null || text.isEmpty()) {
+            return "[]";
+        }
+
+        // Remove markdown code fences
+        String cleaned = text
+                .replaceAll("```json\\s*", "")
+                .replaceAll("```\\s*", "")
+                .trim();
+
+        // Find the first [ and last ]
+        int startIdx = cleaned.indexOf('[');
+        int endIdx = cleaned.lastIndexOf(']');
+
+        if (startIdx != -1 && endIdx != -1 && endIdx > startIdx) {
+            return cleaned.substring(startIdx, endIdx + 1);
+        }
+
+        // Try to find JSON array using regex
+        Pattern jsonArrayPattern = Pattern.compile("\\[\\s*\\{.*}\\s*]", Pattern.DOTALL);
+        Matcher matcher = jsonArrayPattern.matcher(cleaned);
+        if (matcher.find()) {
+            return matcher.group();
+        }
+
+        logger.warning("Could not find JSON array in response: " + text.substring(0, Math.min(200, text.length())));
+        return "[]";
+    }
+
+    /**
+     * Source articles using MiniMax M2 with direct chat completion.
+     * Uses the model's built-in knowledge to generate news article suggestions.
+     *
+     * @ModifiedByJunie 2025-12-10
+     */
+    @Override
+    public List<SourceArticle> sourceAll() throws IOException {
+        logger.info("Sourcing articles with MiniMax M2...");
+
+        String today = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        String weekStart = LocalDate.now().minusDays(7).format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+
+        // @ModifiedByJunie 2025-12-10 - Added explicit current week date range requirement
+        // @ModifiedByJunie 2025-12-10 - Added X, Facebook, Instagram as priority sources
+        // @ModifiedByJunie 2025-12-18 - Added specific local news sources (Centurion Rekord, Laudium Sun, Niz Media, Laudium Today)
+        String systemPrompt = """
+            You are a news aggregation assistant for the Laudium Biz App.
+
+            CRITICAL DATE REQUIREMENT: Today's date is %s. Only suggest articles from THIS CURRENT WEEK (%s to %s).
+            Do NOT suggest old articles or events from previous weeks/months. All articles must be recent and current.
+
+            PRIMARY LOCAL NEWS SOURCES - USE WEB SEARCH TO CHECK THESE FIRST:
+            - Centurion Rekord (rekord.co.za) - Local Centurion community news
+            - Laudium Sun - Community newspaper for Laudium
+            - Niz Media - Local community media outlet
+            - Laudium Today - Daily Laudium community updates and news
+
+            SOCIAL MEDIA SOURCES - Check these platforms for news:
+            - X (Twitter): Search for posts from local community accounts, news outlets, and trending topics
+            - Facebook: Check community groups, local news pages, mosque pages, and community organization pages
+            - Instagram: Look for posts from local influencers, community pages, and news accounts
+
+            ADDITIONAL NEWS SOURCES:
+            - Local news websites (News24, IOL, Daily Maverick, etc.)
+            - RT News for international Muslim-world stories
+
+            IMPORTANT: Use the search_web tool to find real articles from these sources. Search queries should include:
+            - "Centurion Rekord Laudium" + current topic
+            - "Laudium Sun news" + current topic
+            - "Niz Media Laudium" + current topic
+            - "Laudium Today" + current topic
+
+            Based on your web search results, suggest news articles that would interest our community.
+            Focus on:
+            - Hyper-local community news for Laudium, Centurion, Erasmia, Houton, Rosebank, Eldoraigne, Raslouw (South Africa)
+            - Muslim community news and updates
+            - International Muslim news (Palestine, Gaza, Yemen, Lebanon, Syria, Iran)
+            - Mosque & Ramadan Updates
+            - Charity & Social Drives
+            - Community Alerts (water issues, load shedding, road works, sinkholes)
+            - Trending topics from X/Twitter relevant to our community
+            - Viral community posts from Facebook and Instagram
+
+            IMPORTANT: Output ONLY a valid JSON array with NO text before or after. Do NOT include markdown code fences.
+            Start your response directly with [ and end with ]
+
+            Each object must have these exact fields:
+            [
+                {
+                    "title": "Article title",
+                    "url": "https://source-url.com/article",
+                    "platform": "Centurion Rekord, Laudium Sun, Niz Media, Laudium Today, X/Twitter, Facebook, Instagram, or News site name",
+                    "timestamp": "%sT10:00:00",
+                    "author": "Author name, @username, or 'Staff Reporter'",
+                    "content": "Brief 2-3 sentence summary of the article content"
+                }
+            ]
+
+            Provide 5-10 relevant news topics from THIS WEEK ONLY (%s to %s) that our South African Muslim community would be interested in.
+            Prioritize articles from Centurion Rekord, Laudium Sun, Niz Media, and Laudium Today.
+            Include at least 2-3 items sourced from X, Facebook, or Instagram. Use realistic URLs where possible.
+            All timestamps must be within the current week.
+            """.formatted(today, weekStart, today, today, weekStart, today);
+
+        String userPrompt = "Search the PRIMARY LOCAL NEWS SOURCES first (Centurion Rekord, Laudium Sun, Niz Media, Laudium Today), then look for news from social media and other outlets covering that community:\n" +
+                "PRIORITY 1 - LOCAL CRIME (search for these first):\n" +
+                "- Murders, killings, shootings in Laudium, Centurion, and surrounding areas\n" +
+                "- Kidnappings, hijackings, car theft, armed robberies\n" +
+                "- Break-ins, house robberies, burglaries, theft\n" +
+                "- Arrests, court cases, police operations, SAPS news\n" +
+                "- Gang activity, drug busts, violent crimes\n\n" +
+                "PRIORITY 2 - OTHER LOCAL NEWS:\n" +
+                "- Local Laudium and Centurion community news from the primary sources\n" +
+                "- Community Alerts for water issues, load shedding, road works, sinkholes\n" +
+                "- Mosque & Ramadan Updates\n" +
+                "- Charity & Social Drives\n\n" +
+                "PRIORITY 3 - INTERNATIONAL:\n" +
+                "- International Muslim News\n" +
+                "- Other General News\n\n" +
+                "If there is no specific local news, look at international news and Pretoria news.\n\n" +
+                "Generate today's news articles as a JSON array. Start directly with [ and end with ]";
+
+        // @ModifiedByJunie 2025-12-18 - Changed from chatSimple to chatWithTools to enable web search
+        String response = chatWithTools(systemPrompt, userPrompt, 3);
+        logger.info("MiniMax response received, length: " + response.length());
+
+        try {
+            String jsonContent = extractJsonArray(response);
+            logger.fine("Extracted JSON: " + jsonContent.substring(0, Math.min(500, jsonContent.length())));
+
+            SourceArticle[] articles = gson.fromJson(jsonContent, SourceArticle[].class);
+
+            if (articles == null || articles.length == 0) {
+                logger.warning("No articles parsed from response");
+                return List.of();
+            }
+
+            List<SourceArticle> articleList = Arrays.asList(articles);
+            logger.info("Successfully parsed " + articleList.size() + " source articles");
+
+            // Persist articles
+            try {
+                sourceArticlePersistenceService.saveBatch(articleList, jsonContent, "minimax");
+            } catch (Exception e) {
+                logger.warning("Failed to persist source articles: " + e.getMessage());
+            }
+
+            return articleList;
+        } catch (Exception e) {
+            logger.warning("Failed to parse source articles: " + e.getMessage());
+            logger.fine("Raw response: " + response);
+            return List.of();
+        }
+    }
+
+    /**
+     * Find sources for an article based on its title, summary, and/or content.
+     * Uses MiniMax M2 to suggest relevant source URLs that could support the article.
+     *
+     * @param title The article title
+     * @param summary The article summary (optional)
+     * @param content The article content (optional, will be truncated if too long)
+     * @return List of source URLs
+     * @throws IOException if API call fails
+     *
+     * @ModifiedByJunie 2025-12-10
+     */
+    public List<String> findSources(String title, String summary, String content) throws IOException {
+        logger.info("Finding sources for article: " + title);
+
+        // Truncate content if too long to avoid token limits
+        String truncatedContent = "";
+        if (content != null && !content.isEmpty()) {
+            // Strip HTML tags and truncate
+            String plainContent = content.replaceAll("<[^>]*>", " ").replaceAll("\\s+", " ").trim();
+            truncatedContent = plainContent.length() > 2000
+                ? plainContent.substring(0, 2000) + "..."
+                : plainContent;
+        }
+
+        String systemPrompt = """
+            You are a research assistant specialized in finding credible news sources.
+            Based on the article information provided, suggest 3-5 credible source URLs that would support this article.
+
+            Focus on:
+            - Major news outlets (Reuters, AP, Al Jazeera, BBC, etc.)
+            - Official government or organization websites
+            - Reputable regional news sources for South African content
+            - Academic or research institutions when relevant
+
+            IMPORTANT: Output ONLY a valid JSON array of URLs with NO text before or after.
+            Do NOT include markdown code fences. Start directly with [ and end with ]
+
+            Example format:
+            ["https://www.reuters.com/article/...", "https://www.aljazeera.com/news/..."]
+
+            Only include URLs that are likely to be real and relevant to the topic.
+            If the topic is very specific or local, you may include fewer sources.
+            """;
+
+        StringBuilder userPrompt = new StringBuilder();
+        userPrompt.append("Find credible sources for this article:\n\n");
+        userPrompt.append("Title: ").append(title).append("\n");
+        if (summary != null && !summary.isEmpty()) {
+            userPrompt.append("Summary: ").append(summary).append("\n");
+        }
+        if (!truncatedContent.isEmpty()) {
+            userPrompt.append("Content excerpt: ").append(truncatedContent).append("\n");
+        }
+        userPrompt.append("\nReturn ONLY a JSON array of source URLs.");
+
+        String response = chatSimple(systemPrompt, userPrompt.toString());
+        logger.info("MiniMax find-sources response received, length: " + response.length());
+
+        try {
+            String jsonContent = extractJsonArray(response);
+            logger.fine("Extracted JSON: " + jsonContent);
+
+            String[] sources = gson.fromJson(jsonContent, String[].class);
+
+            if (sources == null || sources.length == 0) {
+                logger.warning("No sources parsed from response");
+                return List.of();
+            }
+
+            // Filter out obviously invalid URLs
+            List<String> validSources = new ArrayList<>();
+            for (String source : sources) {
+                if (source != null && (source.startsWith("http://") || source.startsWith("https://"))) {
+                    validSources.add(source.trim());
+                }
+            }
+
+            logger.info("Successfully found " + validSources.size() + " sources");
+            return validSources;
+        } catch (Exception e) {
+            logger.warning("Failed to parse sources JSON: " + e.getMessage());
+            logger.fine("Raw response: " + response);
+            return List.of();
+        }
+    }
+
+    /**
+     * Check if the service is properly configured
+     */
+    public boolean isConfigured() {
+        return apiKey != null && !apiKey.isEmpty();
+    }
+
+    /**
+     * Get service status information
+     */
+    public Map<String, Object> getStatus() {
+        Map<String, Object> status = new LinkedHashMap<>();
+        status.put("service", "MiniMax M2");
+        status.put("configured", isConfigured());
+        status.put("model", model);
+        status.put("apiUrl", apiUrl);
+        status.put("features", List.of("interleaved_thinking", "tool_calling", "web_search", "web_scraping"));
+        return status;
+    }
+}

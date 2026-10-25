@@ -1,0 +1,14 @@
+schema_version: "1.0"
+standard_version: 2026-05-18
+environment: localtest
+runtime:
+  services: {}
+env: {}
+credentials:
+  test_accounts: []
+seed_data:
+  required: false
+  reset_command: ""
+user_story_tests:
+  command: ""
+  notes: No localtest entrypoint could be inferred from repository files.

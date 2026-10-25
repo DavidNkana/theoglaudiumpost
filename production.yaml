@@ -1,0 +1,71 @@
+schema_version: "1.0"
+standard_version: 2026-05-18
+environment:
+  nickname: production
+  production: true
+  runtime_config_file: deploy/production_config_runtime.yaml
+server:
+  ssh_mcp_target: ssh-safai
+  host: 23.88.57.129
+  ssh_port: 22
+  username: root
+application:
+  url: "https://laudiumpost.co.za/"
+  healthcheck_url: "https://laudiumpost.co.za/laudium/api/v1/articles/stats"
+  deploy_type: docker-compose
+source:
+  type: git
+  repository_url: ""
+  branch: main
+  server_working_directory: "/opt/laudium-post"
+  frontend_source_subdir: "LaudiumAPP/Laudium Biz FrontEnd"
+docker_compose:
+  project: laudium-post
+  file: "/opt/laudium-post/docker-compose.prod.yml"
+  services: [mysql, backend, frontend]
+  deploy_service: frontend
+  frontend_container: laudium-frontend
+  frontend_image_tag: laudium-post-frontend:latest
+  rollback_image_id_before_lcp712_frontend_only: "sha256:c8efaad3aa147abd3b115b3100ff9c381447b9beb5692a912626a4265fafd37f"
+  known_prior_rollback_image_id: "sha256:3d35abd377f3a806482cba880c6d10fb921c984d4e35efea89ce53c2ef02b8d7"
+dns:
+  provider: cloudflare
+  zone: laudiumpost.co.za
+  records: []
+routing:
+  reverse_proxy: "existing production route; no change in this readiness repair"
+  config_path: ""
+  routes:
+    - "https://laudiumpost.co.za/"
+    - "https://laudiumpost.co.za/admin"
+    - "https://laudiumpost.co.za/laudium/api/v1/"
+certificates:
+  mode: "existing HTTPS certificate; no change in this readiness repair"
+  cloudflare_ssl_mode: "existing; not modified"
+data_safety:
+  schema_migrations_allowed: false
+  allowed_migration_tools: []
+  destructive_data_changes_allowed: false
+  touches_active_file_storage: false
+dependencies:
+  required_provisioning:
+    - docker_compose_project_laudium_post
+    - existing_https_route_laudiumpost
+commands:
+  precheck:
+    - "bash deploy/scripts/deploy-production-frontend-only.sh --dry-run --source /opt/laudium-post/.deploy-candidates/lcp712-frontend-only-3b6d8d27/source-frontend"
+  deploy:
+    - "bash deploy/scripts/deploy-production-frontend-only.sh --execute --source /opt/laudium-post/.deploy-candidates/lcp712-frontend-only-3b6d8d27/source-frontend"
+  verify:
+    - "curl -fsS https://laudiumpost.co.za/ >/dev/null"
+    - "curl -fsS https://laudiumpost.co.za/admin >/dev/null"
+    - "curl -fsS https://laudiumpost.co.za/laudium/api/v1/articles/stats >/dev/null"
+    - "curl -fsS https://laudiumpost.co.za/laudium/api/v1/categories >/dev/null"
+production_controls:
+  approval_required: true
+  approved_production_note: "b880e457-0c7a-44cd-9ffe-65bb8adf5d5b"
+  downtime:
+    expected: "frontend container replacement only"
+    max_acceptable_minutes: 2
+    mitigation:
+      - "rollback with deploy/scripts/rollback.sh --execute --target-image sha256:c8efaad3aa147abd3b115b3100ff9c381447b9beb5692a912626a4265fafd37f"

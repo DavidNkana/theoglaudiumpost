@@ -1,0 +1,1045 @@
+schema_version: "1.0"
+standard_version: 2026-05-18
+entries:
+  - timestamp_cat: "2026-05-19 13:14 CAT"
+    lcp_task_id: 712
+    child_lcp_bug_task_id: 729
+    environment: production
+    status: PRODUCTION_DEPLOYED_READY_FOR_JOBS
+    actor: deployment-manager
+    job_id: "deploy-lcp712-prod-state-recovery-finish"
+    project_folder: "C:\\Software\\SafAi\\LaudiumAPP"
+    frontend_project_folder: "C:\\Software\\SafAi\\LaudiumAPP\\Laudium Biz"
+    recovery_finish_decision: "No redeploy executed; production state inspection proved retry2 already deployed the approved frontend/API-base fix."
+    production_path: "/opt/laudium-post"
+    production_url: "https://laudiumpost.co.za/"
+    production_api_base: "https://laudiumpost.co.za/laudium/api/v1/"
+    approved_scope: "frontend/config production deploy recovery/finish only for API-base/CORS fix"
+    active_state_evidence:
+      frontend_container: "laudium-frontend running; started 2026-05-19T10:45:03Z; restartCount=0"
+      active_frontend_image: "sha256:0220266a914bebd412c7e6d257afefd28788f61327a5678002b210a5945afd85"
+      active_frontend_tag: "laudium-post-frontend:lcp712-3b6d8d27-api-base-cors-20260519 and latest"
+      backend_image_unchanged: "sha256:836242467d56c1ffe4073266964f859ad9196833139082e95a1cb85a7e61149d"
+      retry2_success_entry_present: "deploy/evidence.yaml latest prior entry from deploy-lcp712-api-base-prod-retry2 records PRODUCTION_DEPLOYED_READY_FOR_JOBS."
+    validation_evidence:
+      production_approval_note: "b880e457-0c7a-44cd-9ffe-65bb8adf5d5b -> production.deploy.approved true"
+      smoke_http: "root=200, admin=200, articles/stats=200, categories=200"
+      auth_endpoint: "POST https://laudiumpost.co.za/laudium/api/v1/auth/login with invalid smoke credentials returned HTTP 401."
+      active_frontend_correct_api_references: "4 matches for https://laudiumpost.co.za/laudium/api/v1/ in active nginx html; asset /usr/share/nginx/html/assets/index-BiTwIJ0L.js."
+      active_frontend_legacy_api_references: "0 matches for https://server.safai.co.za/Laudiumbiz/api/v1/."
+      frontend_logs: "Recent nginx logs show deployment smoke requests served expected statuses; no secret-bearing output recorded."
+      backend_logs: "Only expected BadCredentialsException from invalid auth smoke in sampled logs; no backend deploy/restart."
+    rollback_readiness:
+      exact_safe_rollback_command: "cd /opt/laudium-post && docker tag sha256:c8efaad3aa147abd3b115b3100ff9c381447b9beb5692a912626a4265fafd37f laudium-post-frontend:latest && docker compose -p laudium-post -f docker-compose.prod.yml up -d --no-deps frontend"
+      generated_rollback_script: "/opt/laudium-post/deploy/scripts/rollback-production-frontend-only.sh --execute --target-image sha256:c8efaad3aa147abd3b115b3100ff9c381447b9beb5692a912626a4265fafd37f"
+      rollback_image_available: "sha256:c8efaad3aa147abd3b115b3100ff9c381447b9beb5692a912626a4265fafd37f"
+    deployment_actions:
+      recovery_finish_redeploy_executed: "no"
+      retry2_had_changed_production: "yes"
+      backend_deployed: "no"
+      db_or_volume_action: "none"
+      final_jobs_ux_e2e: "not run"
+      lcp_or_azure_closure: "none"
+      dns_proxy_cert_firewall_topology_change: "none"
+      secret_exposure_in_result: "none"
+    return_to_alex: "PRODUCTION_DEPLOYED_READY_FOR_JOBS"
+  - timestamp_cat: "2026-05-19 12:47 CAT"
+    lcp_task_id: 712
+    child_lcp_bug_task_id: 729
+    environment: production
+    status: PRODUCTION_DEPLOYED_READY_FOR_JOBS
+    actor: deployment-manager
+    job_id: "deploy-lcp712-api-base-prod-retry2"
+    project_folder: "C:\\Software\\SafAi\\LaudiumAPP"
+    frontend_project_folder: "C:\\Software\\SafAi\\LaudiumAPP\\Laudium Biz"
+    production_path: "/opt/laudium-post"
+    production_url: "https://laudiumpost.co.za/"
+    production_api_base: "https://laudiumpost.co.za/laudium/api/v1/"
+    approved_scope: "frontend/config production deploy only for API-base/CORS fix"
+    deployment_actions:
+      generated_script_used: "/opt/laudium-post/deploy/scripts/deploy-production-frontend-only.sh --execute --source /opt/laudium-post/.deploy-candidates/lcp712-frontend-only-3b6d8d27/source-frontend"
+      previous_frontend_image_at_retry_start: "sha256:9e355e5784d1807f269a6b605049fb98e5c43015223d18465ea61db394d3f2b1"
+      new_frontend_image: "sha256:0220266a914bebd412c7e6d257afefd28788f61327a5678002b210a5945afd85"
+      release_tag: "laudium-post-frontend:lcp712-3b6d8d27-api-base-cors-20260519"
+      backend_image_unchanged: "sha256:836242467d56c1ffe4073266964f859ad9196833139082e95a1cb85a7e61149d"
+      backend_deployed: "no"
+      db_or_volume_action: "none"
+      final_jobs_ux_e2e: "not run"
+      lcp_or_azure_closure: "none"
+      secret_exposure_in_result: "none"
+    validation_evidence:
+      approvals: "production note b880e457-0c7a-44cd-9ffe-65bb8adf5d5b; Sacha fixed; Handre approved; recovery safe; sysadmin ready."
+      deploy_contract: "deploy-production-frontend-only.sh --contract-only exited 0 before deploy."
+      rollback_dry_run: "rollback-production-frontend-only.sh --dry-run exited 0 before deploy; rollback image sha256:c8efaad3aa147abd3b115b3100ff9c381447b9beb5692a912626a4265fafd37f exists."
+      deploy_dry_run: "deploy-production-frontend-only.sh --dry-run exited 0 before deploy."
+      smoke_http: "root=200, admin=200, articles/stats=200, categories=200"
+      auth_endpoint: "POST https://laudiumpost.co.za/laudium/api/v1/auth/login with invalid smoke credentials returned HTTP 401."
+      active_frontend_correct_api_count: 1
+      active_frontend_legacy_api_count: 0
+      active_frontend_correct_api_file: "/usr/share/nginx/html/assets/index-BiTwIJ0L.js"
+      frontend_logs: "nginx started; smoke requests served expected statuses."
+      backend_logs: "Expected BadCredentialsException from invalid auth smoke only; no backend deploy/restart."
+    rollback_readiness:
+      exact_safe_rollback_command: "cd /opt/laudium-post && docker tag sha256:c8efaad3aa147abd3b115b3100ff9c381447b9beb5692a912626a4265fafd37f laudium-post-frontend:latest && docker compose -p laudium-post -f docker-compose.prod.yml up -d --no-deps frontend"
+      generated_rollback_script: "/opt/laudium-post/deploy/scripts/rollback-production-frontend-only.sh --execute --target-image sha256:c8efaad3aa147abd3b115b3100ff9c381447b9beb5692a912626a4265fafd37f"
+      rollback_image_available: "sha256:c8efaad3aa147abd3b115b3100ff9c381447b9beb5692a912626a4265fafd37f"
+    boundaries: "No SafeTask internals/todo rendering, no final Jobs E2E/UX, no LCP/Azure closure, no backend deploy, no DB/volume destructive action, no DNS/proxy/cert/firewall/topology change, and no secret exposure."
+    return_to_alex: "PRODUCTION_DEPLOYED_READY_FOR_JOBS"
+  - timestamp_cat: "2026-05-19 12:20 CAT"
+    lcp_task_id: 712
+    child_lcp_bug_task_id: 729
+    environment: production
+    status: PRODUCTION_DEPLOYED_READY_FOR_JOBS
+    actor: deployment-manager
+    job_id: "deployment-lcp712-production-frontend-api-base-cors-deploy-after-sysadmin-ready-"
+    project_folder: "C:\\Software\\SafAi\\LaudiumAPP"
+    frontend_project_folder: "C:\\Software\\SafAi\\LaudiumAPP\\Laudium Biz"
+    production_path: "/opt/laudium-post"
+    production_url: "https://laudiumpost.co.za/"
+    production_api_base: "https://laudiumpost.co.za/laudium/api/v1/"
+    approved_scope: "frontend/config production deploy only for API-base/CORS fix"
+    approvals_and_gates:
+      production_deploy_approved_note: "b880e457-0c7a-44cd-9ffe-65bb8adf5d5b -> production.deploy.approved true"
+      sacha_fix_job: "sacha-ultra-lcp712-fix-production-admin-auth-api-base-cors-20260519 -> FIXED_READY_FOR_HANDRE"
+      handre_review_job: "handre-lcp712-review-api-base-cors-fix-20260519 -> APPROVED_READY_FOR_DEPLOYMENT_MANAGER; Critical/Major/Minor=0"
+      recovery_job: "deployment-lcp712-rollback-safety-retry-after-template-repair-20260519 -> RECOVERY_SAFE_READY_FOR_FIX_DEPLOY"
+      sysadmin_readiness_job: "sysadmin-lcp712-production-frontend-deploy-contract-readiness-20260519 -> SYSADMIN_READY_FOR_DEPLOYMENT_MANAGER"
+    source_state:
+      frontend_branch: "main"
+      frontend_commit: "3b6d8d27e8d3bee2db074268337b333ce6afd7ab"
+      approved_modified_files: [".env", "src/config/api.js", "tests/e2e/lcp712-route-env-guard.spec.ts"]
+      local_dist_check: "Correct production API base found in dist asset; forbidden legacy API base absent."
+    deployment_actions:
+      generated_script_used: "/opt/laudium-post/deploy/scripts/deploy-production-frontend-only.sh --execute --source /opt/laudium-post/.deploy-candidates/lcp712-frontend-only-3b6d8d27/source-frontend"
+      artifact_staging: "Prepared frontend dist artifact under generated script source path using approved local dist plus existing nginx Dockerfile/template because the sysadmin-declared source directory was absent."
+      previous_frontend_image: "sha256:c8efaad3aa147abd3b115b3100ff9c381447b9beb5692a912626a4265fafd37f"
+      new_frontend_image: "sha256:9e355e5784d1807f269a6b605049fb98e5c43015223d18465ea61db394d3f2b1"
+      release_tag: "laudium-post-frontend:lcp712-3b6d8d27-api-base-cors-20260519"
+      image_tag: "laudium-post-frontend:latest"
+      backend_image_unchanged: "sha256:836242467d56c1ffe4073266964f859ad9196833139082e95a1cb85a7e61149d"
+      backend_deployed: "no"
+      db_or_volume_action: "none"
+      final_jobs_ux_e2e: "not run"
+      lcp_or_azure_closure: "none"
+      secret_exposure_in_result: "none"
+    validation_evidence:
+      deploy_contract: "deploy-production-frontend-only.sh --contract-only exited 0 before deploy."
+      rollback_dry_run: "rollback-production-frontend-only.sh --dry-run exited 0 before deploy."
+      deploy_dry_run: "deploy-production-frontend-only.sh --dry-run exited 0 after artifact staging."
+      compose_services: ["mysql", "backend", "frontend"]
+      smoke_http: "root=200, admin=200, articles/stats=200, categories=200"
+      auth_endpoint: "POST https://laudiumpost.co.za/laudium/api/v1/auth/login with invalid smoke credentials returned HTTP 401, proving endpoint is reachable."
+      active_frontend_correct_api_count: 1
+      active_frontend_legacy_api_count: 0
+      frontend_logs: "nginx started; smoke requests served 200."
+      backend_logs: "Only expected invalid-credential 401 smoke entries observed in sampled logs; no deploy-caused backend failure."
+    rollback_readiness:
+      exact_safe_rollback_command: "cd /opt/laudium-post && docker tag sha256:c8efaad3aa147abd3b115b3100ff9c381447b9beb5692a912626a4265fafd37f laudium-post-frontend:latest && docker compose -p laudium-post -f docker-compose.prod.yml up -d --no-deps frontend"
+      generated_rollback_script: "/opt/laudium-post/deploy/scripts/rollback-production-frontend-only.sh --execute --target-image sha256:c8efaad3aa147abd3b115b3100ff9c381447b9beb5692a912626a4265fafd37f"
+      generated_rollback_dry_run: "validated exit 0 before deploy"
+    boundaries: "No final Jobs E2E/UX, no LCP/Azure closure, no backend deploy, no DB/volume destructive action, no DNS/proxy/cert/firewall/topology change, and no secret exposure."
+    return_to_alex: "PRODUCTION_DEPLOYED_READY_FOR_JOBS"
+  - timestamp_cat: "2026-05-19 12:00 CAT"
+    lcp_task_id: 712
+    child_lcp_bug_task_id: 729
+    environment: production
+    status: SYSADMIN_READY_FOR_DEPLOYMENT_MANAGER
+    actor: sysadmin
+    job_id: "sysadmin-lcp712-production-frontend-deploy-contract-readiness-20260519"
+    project_folder: "C:\\Software\\SafAi\\LaudiumAPP"
+    production_path: "/opt/laudium-post"
+    production_url: "https://laudiumpost.co.za/"
+    production_api_base: "https://laudiumpost.co.za/laudium/api/v1/"
+    approved_scope: "deploy/readiness/config only; frontend-only production deploy path for API-base/CORS fix"
+    readiness_repair:
+      production_environment_file: "deploy/production.yaml"
+      production_runtime_config_file: "deploy/production_config_runtime.yaml"
+      generated_frontend_deploy_script_local: "deploy/scripts/deploy-production-frontend-only.sh"
+      generated_frontend_deploy_script_server: "/opt/laudium-post/deploy/scripts/deploy-production-frontend-only.sh"
+      generated_rollback_script_local: "deploy/scripts/rollback-production-frontend-only.sh"
+      generated_rollback_script_server: "/opt/laudium-post/deploy/scripts/rollback-production-frontend-only.sh"
+      rollback_exact_command: "cd /opt/laudium-post && docker tag sha256:c8efaad3aa147abd3b115b3100ff9c381447b9beb5692a912626a4265fafd37f laudium-post-frontend:latest && docker compose -p laudium-post -f docker-compose.prod.yml up -d --no-deps frontend"
+    verified_production_facts:
+      compose_project: laudium-post
+      compose_file: "/opt/laudium-post/docker-compose.prod.yml"
+      services: [mysql, backend, frontend]
+      frontend_container: laudium-frontend
+      current_frontend_image: "sha256:c8efaad3aa147abd3b115b3100ff9c381447b9beb5692a912626a4265fafd37f"
+      rollback_image: "sha256:3d35abd377f3a806482cba880c6d10fb921c984d4e35efea89ce53c2ef02b8d7"
+    validation_evidence:
+      project_folder_check: "Test-Path/Resolve-Path confirmed C:\\Software\\SafAi\\LaudiumAPP and deploy exists."
+      local_file_check: "Required deploy production/rollback/script files exist."
+      server_deploy_contract_dry_run: "deploy-production-frontend-only.sh --contract-only exited 0; no source artifact/deploy action executed."
+      server_rollback_dry_run: "rollback-production-frontend-only.sh --dry-run exited 0; no tag/compose action executed."
+    deployment_actions:
+      built_artifact: "no"
+      deployed: "no"
+      image_changed: "no"
+      container_restart_or_replacement: "none"
+      backend_deployed: "no"
+      db_or_volume_action: "none"
+      final_jobs_ux_e2e: "not run"
+      lcp_or_azure_closure: "none"
+      secret_exposure_in_result: "none"
+    return_to_alex: "SYSADMIN_READY_FOR_DEPLOYMENT_MANAGER"
+  - timestamp_cat: "2026-05-19 11:47 CAT"
+    lcp_task_id: 712
+    child_lcp_bug_task_id: 729
+    environment: production
+    status: BLOCKED_NEEDS_SYSADMIN
+    actor: deployment-manager
+    job_id: "deployment-lcp712-production-deploy-api-base-cors-fix-after-safe-recovery-202605"
+    project_folder: "C:\\Software\\SafAi\\LaudiumAPP"
+    frontend_project_folder: "C:\\Software\\SafAi\\LaudiumAPP\\Laudium Biz"
+    production_path: "/opt/laudium-post"
+    production_url: "https://laudiumpost.co.za"
+    approved_scope: "frontend/config production deploy only for API-base/CORS fix"
+    terminal_reason: "Production deploy stopped before build/deploy because the repo deploy contract has no production environment/runtime entry, rollback.yaml has no rollback commands, project-config deploy_type is legacy without required migration deadline, and the only discovered server deploy script is stale full-stack LCP712 deploy script that rebuilds/recreates backend and frontend from older approved SHAs. Running it would violate frontend-only scope and the generated-script deploy rule."
+    verified_gates:
+      production_deploy_approved_note: "b880e457-0c7a-44cd-9ffe-65bb8adf5d5b"
+      chain_note: "1d85cd41-c205-4742-800f-6a4ede7b7610"
+      sacha_fix_job: "sacha-ultra-lcp712-fix-production-admin-auth-api-base-cors-20260519 -> FIXED_READY_FOR_HANDRE"
+      handre_review_job: "handre-lcp712-review-api-base-cors-fix-20260519 -> APPROVED_READY_FOR_DEPLOYMENT_MANAGER; Critical/Major/Minor=0"
+      recovery_job: "deployment-lcp712-rollback-safety-retry-after-template-repair-20260519 -> RECOVERY_SAFE_READY_FOR_FIX_DEPLOY"
+    source_state:
+      frontend_branch: "main"
+      frontend_commit: "3b6d8d27e8d3bee2db074268337b333ce6afd7ab"
+      dirty_files: [".env", "src/config/api.js", "tests/e2e/lcp712-route-env-guard.spec.ts"]
+      untracked_files: []
+      correct_api_base_present: "https://laudiumpost.co.za/laudium/api/v1/ present in approved source files"
+      legacy_api_base_in_approved_source: "not present in approved api.js/.env runtime config lines after fix"
+    production_contract_findings:
+      local_project_config: "deploy/project-config.yaml registers only localtest; no production env file/runtime config"
+      local_rollback: "deploy/rollback.yaml strategy=blocked_needs_facts; commands=[]"
+      local_generated_production_deploy_script: "not found"
+      server_generated_candidate_script: "/opt/laudium-post/.deploy-candidates/lcp712-20260518-1545-CAT/deploy-approved-lcp712.sh"
+      why_server_script_rejected: "full-stack backend+frontend deploy from older frontend/backend tar SHAs; not frontend/config-only and not this Handre-approved API-base fix"
+      server_checkout: "main 6bd70e06c8da203c64e43d6542b98a7c4d0cde5a with many tracked dirty LaudiumAPP/Laudium Biz FrontEnd files"
+    deployment_actions:
+      built_artifact: "no; stopped at deploy-contract gate"
+      deployed: "no"
+      image_changed: "no"
+      docker_compose_up_or_restart: "none"
+      backend_deployed: "no"
+      db_or_volume_action: "none"
+      final_jobs_ux_e2e: "not run; Jobs owns after valid deploy"
+      lcp_or_azure_closure: "none"
+      secret_exposure_in_result: "none; secrets redacted"
+    rollback_readiness:
+      previous_frontend_image_id: "sha256:c8efaad3aa147abd3b115b3100ff9c381447b9beb5692a912626a4265fafd37f"
+      previous_frontend_image_tag: "laudium-post-frontend:latest"
+      known_rollback_frontend_tag_from_prior_recovery: "laudium-post-frontend:rollback-lcp712-fullstack-predeploy-20260519-0744-CAT"
+      known_rollback_frontend_image_id_from_prior_recovery: "sha256:3d35abd377f3a806482cba880c6d10fb921c984d4e35efea89ce53c2ef02b8d7"
+      exact_safe_rollback_command: "blocked_needs_facts; deploy/rollback.yaml has no generated rollback command and must be repaired before production deploy"
+    unblock_required:
+      owner: "sysadmin/deployment-governance readiness"
+      actions:
+        - "Create/validate production deploy contract/runtime config for Laudium Post."
+        - "Generate a frontend-only production deploy script for this approved artifact or provide an approved compose/script path that does not redeploy backend."
+        - "Define exact rollback command/path retaining previous frontend image/tag/digest."
+        - "Resolve or explicitly account for server checkout dirty state before deployment."
+    evidence_paths:
+      local: "C:\\Software\\SafAi\\LaudiumAPP\\deploy\\evidence.yaml"
+      server: "/opt/laudium-post/deploy/evidence.yaml"
+    return_to_alex: "BLOCKED_NEEDS_SYSADMIN"
+  - timestamp_cat: "2026-05-19 11:26 CAT"
+    lcp_task_id: 712
+    child_lcp_bug_task_id: 729
+    environment: production
+    status: RECOVERY_SAFE_READY_FOR_FIX_DEPLOY
+    actor: deployment-manager
+    recovery_job_id: "deployment-lcp712-rollback-safety-retry-after-template-repair-20260519"
+    project_folder: "C:\\Software\\SafAi\\LaudiumAPP"
+    production_path: "/opt/laudium-post"
+    production_url: "https://laudiumpost.co.za"
+    approved_stage: DEPLOYMENT_RECOVERY_EVIDENCE_ONLY
+    verification_reason: "Fresh bounded recovery evidence after SafeTask template repair. No Handre-approved API-base/CORS fix deployed. Current production health is stable and rollback target image identities are available; rollback was not executed because active state is safe and rollback frontend target retains the legacy API base."
+    active_images:
+      backend: "sha256:836242467d56c1ffe4073266964f859ad9196833139082e95a1cb85a7e61149d"
+      frontend: "sha256:c8efaad3aa147abd3b115b3100ff9c381447b9beb5692a912626a4265fafd37f"
+      mysql: "sha256:64756cc92f707eb504496d774353990bcb0f6999ddf598b6ad188f2da66bd000"
+    image_tags:
+      backend: "laudium-post-backend:latest, laudium-post-backend:lcp712-4a9046e-hikari-20260519-0744-CAT"
+      frontend: "laudium-post-frontend:latest, laudium-post-frontend:lcp712-3b6d8d27-auth-20260519-0744-CAT"
+      mysql: "mysql:8.0"
+    server_checkout:
+      path: "/opt/laudium-post"
+      commit: "6bd70e06c8da203c64e43d6542b98a7c4d0cde5a"
+      tracked_dirty_file_count_untracked_excluded: 620
+      dirty_scope_sample: "LaudiumAPP/Laudium Biz FrontEnd tracked files; future deploy must use approved commit/source evidence and not assume clean server source."
+    rollback_identity_inspected:
+      backend_rollback_tag: "laudium-post-backend:rollback-lcp712-fullstack-predeploy-20260519-0744-CAT"
+      backend_rollback_image_id: "sha256:9252611cc5c9261045726d7f58a7c38e061643f7955f5bb5c0223dc42bf326f8"
+      frontend_rollback_tag: "laudium-post-frontend:rollback-lcp712-fullstack-predeploy-20260519-0744-CAT"
+      frontend_rollback_image_id: "sha256:3d35abd377f3a806482cba880c6d10fb921c984d4e35efea89ce53c2ef02b8d7"
+      rollback_action: "not executed"
+      why_no_rollback: "Current production health checks returned safe; active frontend still exposes legacy API base and rollback frontend target would not fix that pending bug."
+    smoke_health:
+      checked_at_cat: "2026-05-19 11:21-11:26 CAT"
+      compose_ps: "laudium-backend running Up 4 hours; laudium-frontend running Up 4 hours; laudium-mysql running Up 6 weeks healthy"
+      restart_counts: "backend=0 frontend=0 mysql=0"
+      public_home_http: 200
+      public_admin_http: 200
+      public_articles_stats_http: 200
+      public_categories_http: 200
+      mysql_health: "docker health=healthy; mysqladmin ping inside container=mysqld is alive"
+      hikari_timeout_leak_count_since_60m: 0
+      minimax_or_api_secret_log_exposure_count_since_60m: 0
+    frontend_auth_endpoint_check:
+      active_frontend_endpoint: "server.safai.co.za/Laudiumbiz/api/v1"
+      expected_fixed_endpoint_not_active: "laudiumpost.co.za/laudium/api/v1 not found in active frontend grep"
+      final_e2e_ux: "not run; Jobs owns final browser E2E/UX after future deploy"
+    constraints:
+      destructive_db_or_volume_action: "none"
+      production_db_mutation: "none"
+      source_edits_build_merge_commit_push: "none"
+      docker_compose_down_volume_restart_or_up: "none"
+      reviewed_fix_deployed: "no"
+    evidence_paths:
+      server: "/opt/laudium-post/deploy/evidence.yaml"
+      local: "C:\\Software\\SafAi\\LaudiumAPP\\deploy\\evidence.yaml"
+    return_to_alex: "RECOVERY_SAFE_READY_FOR_FIX_DEPLOY"
+  - timestamp_cat: "2026-05-19 10:28 CAT"
+    lcp_task_id: 712
+    child_lcp_bug_task_id: 729
+    environment: production
+    status: RECOVERY_SAFE_READY_FOR_FIX_DEPLOY
+    actor: deployment-manager
+    recovery_job_id: "deployment-lcp712-rollback-safety-post-pc-restart-retry-20260519"
+    project_folder: "C:\\Software\\SafAi\\LaudiumAPP"
+    production_path: "/opt/laudium-post"
+    production_url: "https://laudiumpost.co.za"
+    approved_stage: DEPLOYMENT_RECOVERY_EVIDENCE_ONLY
+    verification_reason: "Post-PC-restart bounded recovery evidence retry requested by Chris. Fresh current-state checks collected after restart; no stale terminal output relied on. No Sacha/Handre API-base/CORS fix deployed. Production is stable and rollback target identity remains available, but rollback was not executed because active health is safe and prior/active evidence shows rollback frontend keeps the same legacy API base."
+    active_images:
+      backend: "sha256:836242467d56c1ffe4073266964f859ad9196833139082e95a1cb85a7e61149d"
+      frontend: "sha256:c8efaad3aa147abd3b115b3100ff9c381447b9beb5692a912626a4265fafd37f"
+      mysql: "sha256:64756cc92f707eb504496d774353990bcb0f6999ddf598b6ad188f2da66bd000"
+    image_tags:
+      backend: "laudium-post-backend:latest, laudium-post-backend:lcp712-4a9046e-hikari-20260519-0744-CAT"
+      frontend: "laudium-post-frontend:latest, laudium-post-frontend:lcp712-3b6d8d27-auth-20260519-0744-CAT"
+      mysql: "mysql:8.0, laudium-mysql:rollback-lcp676-predeploy-20260515-024956-CAT"
+    server_checkout:
+      path: "/opt/laudium-post"
+      commit_short: "6bd70e0"
+      tracked_dirty_file_count: 650
+      dirty_scope_sample: "LaudiumAPP/Laudium Biz FrontEnd tracked files; deploy job must not assume clean server source."
+    rollback_identity_inspected:
+      backend_rollback_tag: "laudium-post-backend:rollback-lcp712-fullstack-predeploy-20260519-0744-CAT"
+      backend_rollback_image_id: "sha256:9252611cc5c9261045726d7f58a7c38e061643f7955f5bb5c0223dc42bf326f8"
+      frontend_rollback_tag: "laudium-post-frontend:rollback-lcp712-fullstack-predeploy-20260519-0744-CAT"
+      frontend_rollback_image_id: "sha256:3d35abd377f3a806482cba880c6d10fb921c984d4e35efea89ce53c2ef02b8d7"
+      rollback_action: "not executed"
+      why_no_rollback: "Current production health is stable; rollback frontend target is known to retain server.safai.co.za/Laudiumbiz/api/v1 and would not resolve the API-base/CORS bug."
+    smoke_health:
+      checked_at_cat: "2026-05-19 10:22-10:28 CAT"
+      compose_ps: "laudium-backend running Up 3 hours; laudium-frontend running Up 3 hours; laudium-mysql running Up 6 weeks healthy"
+      restart_counts: "backend=0 frontend=0 mysql=0"
+      public_home_http: 200
+      public_admin_http: 200
+      public_articles_stats_http: 200
+      public_categories_http: 200
+      mysql_health: "docker health=healthy; mysqladmin ping inside container ok"
+      hikari_timeout_leak_count_since_60m: 0
+      minimax_or_api_secret_log_exposure_count_since_60m: 0
+    frontend_auth_endpoint_check:
+      active_frontend_endpoint: "server.safai.co.za/Laudiumbiz/api/v1"
+      expected_fixed_endpoint_not_active: "laudiumpost.co.za/laudium/api/v1 not found in active frontend grep"
+      final_e2e_ux: "not run; Jobs owns final browser E2E/UX after future deploy"
+    actions_performed:
+      - "Verified local project folder exactly C:\\Software\\SafAi\\LaudiumAPP and server production path/evidence files exist."
+      - "Inspected current production git commit/dirty count, compose ps, image IDs/tags, rollback image IDs/tags, restart counts, endpoint smokes, MySQL health, Hikari log count, redacted secret-pattern log count, and active frontend API-base string."
+      - "Did not deploy the Sacha/Handre API-base/CORS fix, did not run verify-deploy.ps1, and did not run final E2E/UX."
+    constraints:
+      destructive_db_or_volume_action: "none"
+      production_db_mutation: "none"
+      source_edits_build_merge_commit_push: "none"
+      docker_compose_down_volume_restart_or_up: "none"
+    evidence_paths:
+      server: "/opt/laudium-post/deploy/evidence.yaml"
+      local: "C:\\Software\\SafAi\\LaudiumAPP\\deploy\\evidence.yaml"
+    return_to_alex: "RECOVERY_SAFE_READY_FOR_FIX_DEPLOY"
+  - timestamp_cat: "2026-05-19 10:04 CAT"
+    lcp_task_id: 712
+    child_lcp_bug_task_id: 729
+    environment: production
+    status: RECOVERY_SAFE_READY_FOR_FIX_DEPLOY
+    actor: deployment-manager
+    recovery_job_id: "deployment-lcp712-rollback-safety-permission-safe-retry-20260519"
+    project_folder: "C:\\Software\\SafAi\\LaudiumAPP"
+    production_path: "/opt/laudium-post"
+    production_url: "https://laudiumpost.co.za"
+    approved_stage: DEPLOYMENT_RECOVERY_VALIDATION
+    verification_reason: "Permission-safe bounded retry after MessageAbortedError/permission abort. Re-collected trusted production state and smoke evidence without deploying the Handre-approved API-base/CORS fix. Active production is stable; rollback target images exist; no rollback performed because current state is not unsafe and known rollback frontend still carries legacy API-base endpoint."
+    active_images:
+      backend: "sha256:836242467d56c1ffe4073266964f859ad9196833139082e95a1cb85a7e61149d"
+      frontend: "sha256:c8efaad3aa147abd3b115b3100ff9c381447b9beb5692a912626a4265fafd37f"
+      mysql: "sha256:64756cc92f707eb504496d774353990bcb0f6999ddf598b6ad188f2da66bd000"
+    image_tags:
+      backend: "laudium-post-backend:latest, laudium-post-backend:lcp712-4a9046e-hikari-20260519-0744-CAT"
+      frontend: "laudium-post-frontend:latest, laudium-post-frontend:lcp712-3b6d8d27-auth-20260519-0744-CAT"
+      mysql: "mysql:8.0"
+    server_checkout:
+      path: "/opt/laudium-post"
+      commit_short: "6bd70e0"
+      tracked_dirty_file_count: 620
+      dirty_scope_sample: "LaudiumAPP/Laudium Biz FrontEnd tracked files; deploy job must use approved source/commit evidence, not assume clean server source."
+    rollback_identity_inspected:
+      backend_rollback_tag: "laudium-post-backend:rollback-lcp712-fullstack-predeploy-20260519-0744-CAT"
+      backend_rollback_image_id: "sha256:9252611cc5c9261045726d7f58a7c38e061643f7955f5bb5c0223dc42bf326f8"
+      frontend_rollback_tag: "laudium-post-frontend:rollback-lcp712-fullstack-predeploy-20260519-0744-CAT"
+      frontend_rollback_image_id: "sha256:3d35abd377f3a806482cba880c6d10fb921c984d4e35efea89ce53c2ef02b8d7"
+      rollback_action: "not executed"
+      why_no_rollback: "Current production health is stable; rollback frontend target is known from prior evidence to retain server.safai.co.za/Laudiumbiz/api/v1 and would not resolve the API-base/CORS bug."
+    smoke_health:
+      checked_at_cat: "2026-05-19 09:57-10:04 CAT"
+      compose_ps: "laudium-backend running; laudium-frontend running; laudium-mysql running healthy"
+      restart_counts: "backend=0 frontend=0 mysql=0"
+      public_home_http: 200
+      public_admin_http: 200
+      public_articles_stats_http: 200
+      public_categories_http: 200
+      mysql_health: "docker health=healthy; mysqladmin ping inside container=mysqld is alive"
+      hikari_timeout_leak_count_since_60m: 0
+      minimax_or_api_secret_log_exposure_count_since_60m: 0
+    frontend_auth_endpoint_check:
+      active_frontend_endpoint: "server.safai.co.za/Laudiumbiz/api/v1"
+      expected_fixed_endpoint_not_active: "laudiumpost.co.za/laudium/api/v1 not found in active frontend grep"
+      final_e2e_ux: "not run; Jobs owns final browser E2E/UX after future deploy"
+    actions_performed:
+      - "Verified project folder exactly C:\\Software\\SafAi\\LaudiumAPP and deploy/evidence.yaml exists."
+      - "Inspected production compose file/evidence presence, server commit, tracked dirty source count/sample, container image IDs/tags, rollback image IDs/tags, restart counts, endpoint smokes, MySQL health, Hikari log count, and redacted secret-pattern log count."
+      - "Did not deploy the Sacha/Handre API-base/CORS fix, did not run verify-deploy.ps1, and did not run final E2E/UX."
+    constraints:
+      destructive_db_or_volume_action: "none"
+      production_db_mutation: "none"
+      source_edits_build_merge_commit_push: "none"
+      docker_compose_down_volume_restart_or_up: "none"
+    evidence_paths:
+      server: "/opt/laudium-post/deploy/evidence.yaml"
+      local: "C:\\Software\\SafAi\\LaudiumAPP\\deploy\\evidence.yaml"
+    return_to_alex: "RECOVERY_SAFE_READY_FOR_FIX_DEPLOY"
+  - timestamp_cat: "2026-05-19 09:40 CAT"
+    lcp_task_id: 712
+    child_lcp_bug_task_id: 729
+    environment: production
+    status: RECOVERY_SAFE_READY_FOR_FIX_DEPLOY
+    actor: deployment-manager
+    recovery_job_id: "deployment-lcp712-rollback-safety-bounded-retry-no-loop-20260519"
+    project_folder: "C:\\Software\\SafAi\\LaudiumAPP"
+    production_path: "/opt/laudium-post"
+    production_url: "https://laudiumpost.co.za"
+    approved_stage: DEPLOYMENT_RECOVERY_VALIDATION
+    verification_reason: "One bounded recovery validation pass after prior terminal snapshot silent-loop kills; production is stable and existing rollback identity shows rollback would not remove legacy API-base auth failure. Safe for Alex to route the already Handre-approved API-base/CORS fix deploy; no fix deployed in this job."
+    active_images:
+      backend: "sha256:836242467d56c1ffe4073266964f859ad9196833139082e95a1cb85a7e61149d"
+      frontend: "sha256:c8efaad3aa147abd3b115b3100ff9c381447b9beb5692a912626a4265fafd37f"
+      mysql: "sha256:64756cc92f707eb504496d774353990bcb0f6999ddf598b6ad188f2da66bd000"
+    image_tags:
+      backend: "laudium-post-backend:latest, laudium-post-backend:lcp712-4a9046e-hikari-20260519-0744-CAT"
+      frontend: "laudium-post-frontend:latest, laudium-post-frontend:lcp712-3b6d8d27-auth-20260519-0744-CAT"
+      mysql: "mysql:8.0"
+    server_checkout:
+      path: "/opt/laudium-post"
+      commit_short: "6bd70e0"
+    rollback_identity_inspected:
+      prior_evidence_entry: "2026-05-19 09:02 CAT ALREADY_SAFE_READY_FOR_SACHA"
+      backend_rollback_tag: "laudium-post-backend:rollback-lcp712-fullstack-predeploy-20260519-0744-CAT"
+      backend_rollback_image_id: "sha256:9252611cc5c9261045726d7f58a7c38e061643f7955f5bb5c0223dc42bf326f8"
+      frontend_rollback_tag: "laudium-post-frontend:rollback-lcp712-fullstack-predeploy-20260519-0744-CAT"
+      frontend_rollback_image_id: "sha256:3d35abd377f3a806482cba880c6d10fb921c984d4e35efea89ce53c2ef02b8d7"
+      rollback_action: "not executed"
+    smoke_health:
+      checked_at_cat: "2026-05-19 09:33-09:40 CAT"
+      compose_ps: "laudium-backend Up 2 hours; laudium-frontend Up 2 hours; laudium-mysql Up 6 weeks healthy"
+      restart_counts: "backend=0 frontend=0 mysql=0"
+      public_home_http: 200
+      public_admin_http: 200
+      public_articles_stats_http: 200
+      public_categories_http: 200
+      mysql_health: "docker health=healthy; mysqladmin_ping=ok"
+      hikari_timeout_leak_count_since_60m: 0
+    frontend_auth_endpoint_check:
+      active_frontend_endpoint: "server.safai.co.za/Laudiumbiz/api/v1"
+      expected_fixed_endpoint_not_active: "laudiumpost.co.za/laudium/api/v1 not found in active frontend grep"
+      final_e2e_ux: "not run; Jobs owns final browser E2E/UX after future deploy"
+    actions_performed:
+      - "Verified local project folder exactly C:\\Software\\SafAi\\LaudiumAPP and evidence path exists."
+      - "Read local and server evidence latest entries."
+      - "Inspected production compose ps, container image IDs/tags, restart counts, MySQL health, Hikari log matches, public/API smoke endpoints, and active frontend bundle API-base string."
+      - "Did not deploy Sacha/Handre API-base/CORS fix and did not run final browser E2E/UX."
+    constraints:
+      destructive_db_or_volume_action: "none"
+      production_db_mutation: "none"
+      source_edits_build_merge_commit_push: "none"
+      docker_compose_down_volume_or_restart: "none"
+    evidence_paths:
+      server: "/opt/laudium-post/deploy/evidence.yaml"
+      local: "C:\\Software\\SafAi\\LaudiumAPP\\deploy\\evidence.yaml"
+    return_to_alex: "RECOVERY_SAFE_READY_FOR_FIX_DEPLOY"
+  - timestamp_cat: "2026-05-19 09:02 CAT"
+    lcp_task_id: 712
+    child_lcp_bug_task_id: 729
+    environment: production
+    status: ALREADY_SAFE_READY_FOR_SACHA
+    actor: deployment-manager
+    recovery_job_id: "deployment-lcp712-rollback-safety-narrow-recovery-after-killed-job-20260519"
+    project_folder: "C:\\Software\\SafAi\\LaudiumAPP"
+    production_path: "/opt/laudium-post"
+    production_url: "https://laudiumpost.co.za"
+    approved_stage: DEPLOYMENT
+    verification_reason: "Recovery retry after killed rollback/safety job; re-ran bounded production checks and confirmed no smallest safe rollback target exists for the Jobs auth/CORS failure."
+    active_images_before:
+      backend: "sha256:836242467d56c1ffe4073266964f859ad9196833139082e95a1cb85a7e61149d"
+      frontend: "sha256:c8efaad3aa147abd3b115b3100ff9c381447b9beb5692a912626a4265fafd37f"
+      mysql: "sha256:64756cc92f707eb504496d774353990bcb0f6999ddf598b6ad188f2da66bd000"
+    active_images_after:
+      backend: "sha256:836242467d56c1ffe4073266964f859ad9196833139082e95a1cb85a7e61149d"
+      frontend: "sha256:c8efaad3aa147abd3b115b3100ff9c381447b9beb5692a912626a4265fafd37f"
+      mysql: "sha256:64756cc92f707eb504496d774353990bcb0f6999ddf598b6ad188f2da66bd000"
+    server_checkout:
+      path: "/opt/laudium-post"
+      commit_short: "6bd70e0"
+    rollback_target_checked:
+      backend_rollback_tag: "laudium-post-backend:rollback-lcp712-fullstack-predeploy-20260519-0744-CAT"
+      backend_rollback_image_id: "sha256:9252611cc5c9261045726d7f58a7c38e061643f7955f5bb5c0223dc42bf326f8"
+      frontend_rollback_tag: "laudium-post-frontend:rollback-lcp712-fullstack-predeploy-20260519-0744-CAT"
+      frontend_rollback_image_id: "sha256:3d35abd377f3a806482cba880c6d10fb921c984d4e35efea89ce53c2ef02b8d7"
+      frontend_rollback_endpoint_evidence: "Bounded docker run grep still finds server.safai.co.za/Laudiumbiz/api/v1 in rollback target image, same as active frontend."
+      rollback_action: "not executed"
+    smoke_health:
+      checked_at_cat: "2026-05-19 09:00-09:02 CAT"
+      public_home_http: 200
+      public_admin_http: 200
+      public_articles_stats_http: 200
+      public_categories_http: 200
+      compose_ps: "backend running, frontend running, mysql running healthy"
+      restart_counts: "backend=0 frontend=0 mysql=0"
+      mysql_health: "docker inspect mysql health=healthy; mysqladmin command did not print failure"
+      hikari_timeout_leak_count_since_60m: 0
+    frontend_auth_endpoint_check:
+      active_frontend_endpoint: "server.safai.co.za/Laudiumbiz/api/v1"
+      rollback_frontend_endpoint: "server.safai.co.za/Laudiumbiz/api/v1"
+      final_e2e_ux: "not run; Jobs owns final browser E2E/UX after future deploy"
+    actions_performed:
+      - "Verified /opt/laudium-post and compose/evidence files exist."
+      - "Inspected docker compose state, image IDs, restart counts, rollback image tags, endpoint smokes, MySQL health, and Hikari logs."
+      - "Did not restart, retag, compose up/down, mutate DB/volumes, or deploy Sacha Ultra API-base fix."
+    evidence_paths:
+      server: "/opt/laudium-post/deploy/evidence.yaml"
+      local: "C:\\Software\\SafAi\\LaudiumAPP\\deploy\\evidence.yaml"
+    return_to_alex: "ALREADY_SAFE_READY_FOR_SACHA"
+  - timestamp_cat: "2026-05-19 08:32 CAT"
+    lcp_task_id: 712
+    child_lcp_bug_task_id: 729
+    environment: production
+    status: ALREADY_SAFE_READY_FOR_SACHA
+    actor: deployment-manager
+    project_folder: "C:\\Software\\SafAi\\LaudiumAPP"
+    production_path: "/opt/laudium-post"
+    production_url: "https://laudiumpost.co.za"
+    approved_stage: DEPLOYMENT
+    reason: "Jobs production UX failed because active frontend admin login calls https://server.safai.co.za/Laudiumbiz/api/v1/auth/login and is blocked by CORS/no Access-Control-Allow-Origin. Production health is stable; no rollback/restart was performed because the verified rollback frontend target contains the same server.safai.co.za/Laudiumbiz/api/v1 endpoint and would not remove the CORS failure. Backend rollback would also revert the Hikari fix, so it was not the smallest safe action."
+    active_images_before:
+      backend: "sha256:836242467d56c1ffe4073266964f859ad9196833139082e95a1cb85a7e61149d"
+      frontend: "sha256:c8efaad3aa147abd3b115b3100ff9c381447b9beb5692a912626a4265fafd37f"
+      mysql: "sha256:64756cc92f707eb504496d774353990bcb0f6999ddf598b6ad188f2da66bd000"
+    active_images_after:
+      backend: "sha256:836242467d56c1ffe4073266964f859ad9196833139082e95a1cb85a7e61149d"
+      frontend: "sha256:c8efaad3aa147abd3b115b3100ff9c381447b9beb5692a912626a4265fafd37f"
+      mysql: "sha256:64756cc92f707eb504496d774353990bcb0f6999ddf598b6ad188f2da66bd000"
+    rollback_target_checked:
+      backend_rollback_tag: "laudium-post-backend:rollback-lcp712-fullstack-predeploy-20260519-0744-CAT"
+      backend_rollback_image_id: "sha256:9252611cc5c9261045726d7f58a7c38e061643f7955f5bb5c0223dc42bf326f8"
+      frontend_rollback_tag: "laudium-post-frontend:rollback-lcp712-fullstack-predeploy-20260519-0744-CAT"
+      frontend_rollback_image_id: "sha256:3d35abd377f3a806482cba880c6d10fb921c984d4e35efea89ce53c2ef02b8d7"
+      frontend_rollback_endpoint_evidence: "Static grep of rollback target image still finds https://server.safai.co.za/Laudiumbiz/api/v1/ and //server.safai.co.za/Laudiumbiz/api/v1/; therefore it is not a verified safe target for the auth CORS failure."
+      rollback_action: "not executed"
+    smoke_health:
+      checked_at_cat: "2026-05-19 08:31:07 CAT"
+      public_home_http: 200
+      public_admin_http: 200
+      public_articles_stats_http: 200
+      public_categories_http: 200
+      compose_ps: "backend up, frontend up, mysql up healthy"
+      restart_counts: "backend=0 frontend=0 mysql=0"
+      mysql_health: "docker health healthy; mysqladmin ping ok"
+      hikari_timeout_leak_count_since_45m: 0
+    frontend_auth_endpoint_check:
+      active_frontend_endpoint: "https://server.safai.co.za/Laudiumbiz/api/v1/"
+      rollback_frontend_endpoint: "https://server.safai.co.za/Laudiumbiz/api/v1/"
+      final_e2e_ux: "not run; Jobs owns final browser E2E/UX after future deploy"
+    commands_summary:
+      - "Read local deploy project-config.yaml, rollback.yaml, rollback.sh, evidence.yaml"
+      - "SSH production docker compose/container/image inspection"
+      - "Static grep of active frontend and rollback target image bundles for API/auth endpoints"
+      - "Production smoke/health checks only via curl/docker/mysql/log grep"
+      - "No docker compose up/restart/down, no image retag, no DB or volume mutation"
+    constraints:
+      destructive_db_or_volume_action: "none"
+      production_db_mutation: "none"
+      code_edits: "none"
+      final_e2e_ux: "not run"
+      lcp_or_azure_closure: "none"
+    evidence_paths:
+      server: "/opt/laudium-post/deploy/evidence.yaml"
+      local: "C:\\Software\\SafAi\\LaudiumAPP\\deploy\\evidence.yaml"
+    return_to_alex: "ALREADY_SAFE_READY_FOR_SACHA"
+  - timestamp_cat: "2026-05-19 07:57 CAT"
+    lcp_task_id: 712
+    environment: production
+    status: DEPLOYED_READY_FOR_JOBS
+    actor: release-manager
+    project_folder: "C:\\Software\\SafAi\\LaudiumAPP"
+    backend_repo: "C:\\Software\\SafAi\\LaudiumAPP\\lauduimbizAPI"
+    frontend_repo: "C:\\Software\\SafAi\\LaudiumAPP\\Laudium Biz"
+    production_path: "/opt/laudium-post"
+    production_url: "https://laudiumpost.co.za"
+    approved_stage: DEPLOYMENT
+    production_approval: "production.deploy.approved=true; Chris approval recorded by Alex for LCP #712"
+    source_gate:
+      result: clean_approved_commits
+      backend_branch: master
+      backend_commit: "4a9046e950f55b92dc5651a29c6d38eb1a47c15e"
+      backend_commit_message: "Fix LCP712 CustomRs connection leaks"
+      backend_status: "git status --short empty; approved commit is HEAD and reachable"
+      frontend_branch: main
+      frontend_commit: "3b6d8d27e8d3bee2db074268337b333ce6afd7ab"
+      frontend_commit_message: "Fix LCP712 auth auto-logout timer cap"
+      frontend_status: "git status --short empty; branch ahead origin/main by 2; approved commit is HEAD and reachable"
+      deploy_method: "legacy/manual Docker Compose from clean local source artifacts; server git pull not used"
+    predeploy_validation:
+      backend_focused_test: "cmd.exe /c mvnw.cmd -Dtest=JdbcResourceClosureRegressionTest test -> BUILD SUCCESS; 2 tests, 0 failures/errors"
+      backend_package: "cmd.exe /c mvnw.cmd clean package -DskipTests -> BUILD SUCCESS"
+      backend_war_sha256: "E1BA74C0DB8F583BD53AC808037860877336924AAF685412B53E2296442A9656"
+      frontend_auth_persistence_test: "node test-auth-persistence.cjs -> 15 passed, 0 failed"
+      frontend_router_guardrail_test: "node test-router-guardrail.cjs -> 9 passed, 0 failed"
+      frontend_build: "cmd.exe /c npm.cmd run build -> exit 0"
+      frontend_dist_index_sha256: "76EEB277246DB63514D501A7CD82F2E1475E72D25EB46601C8E01E067E452588"
+      frontend_main_asset: "assets/index-CzL5LD6T.js"
+      frontend_main_asset_sha256: "9B3BCEE39939625168C9D18C3EE929E4A700FB3A8EA253090D326108F6469D32"
+      uploaded_backend_source_tgz_sha256: "8C65C4733E8A8DC839BEDBE6FF94FB1B1931A631A8F594FE2B49E7ED59553287"
+      uploaded_frontend_dist_tgz_sha256: "89719814BFB019D2B38568C302BF40C80B8902E9BBDD26757ACB990C2D261829"
+    deployment_identity:
+      compose_file: "/opt/laudium-post/docker-compose.prod.yml"
+      compose_project: "laudium-post"
+      services: [backend, frontend]
+      backend_image_tag: "laudium-post-backend:lcp712-4a9046e-hikari-20260519-0744-CAT"
+      backend_image_id: "sha256:836242467d56c1ffe4073266964f859ad9196833139082e95a1cb85a7e61149d"
+      backend_image_revision_label: "4a9046e950f55b92dc5651a29c6d38eb1a47c15e"
+      frontend_image_tag: "laudium-post-frontend:lcp712-3b6d8d27-auth-20260519-0744-CAT"
+      frontend_image_id: "sha256:c8efaad3aa147abd3b115b3100ff9c381447b9beb5692a912626a4265fafd37f"
+      frontend_image_revision_label: "3b6d8d27e8d3bee2db074268337b333ce6afd7ab"
+      mysql_image_id_unchanged: "sha256:64756cc92f707eb504496d774353990bcb0f6999ddf598b6ad188f2da66bd000"
+      deploy_started_cat: "2026-05-19 07:50 CAT"
+      deploy_verified_cat: "2026-05-19 07:56 CAT"
+    commands_summary:
+      - "Validated local source commits and clean git status for backend/frontend"
+      - "Ran backend focused regression test and backend package build"
+      - "Ran frontend auth/router focused tests and production build"
+      - "Uploaded backend source tar and frontend dist tar to /tmp"
+      - "Built candidate Docker images with commit labels"
+      - "Tagged predeploy backend/frontend images as rollback-lcp712-fullstack-predeploy-20260519-0744-CAT"
+      - "docker compose -p laudium-post -f docker-compose.prod.yml up -d --no-deps --no-build --force-recreate backend"
+      - "docker compose -p laudium-post -f docker-compose.prod.yml up -d --no-deps --no-build --force-recreate frontend"
+    health_checks:
+      compose_ps: "mysql running healthy; backend running image sha256:836242467d56; frontend running image sha256:c8efaad3aa14; restarts=0 for all three"
+      public_home_http: 200
+      public_admin_http: 200
+      public_articles_stats_http: 200
+      public_categories_http: 200
+      auth_login_invalid_contract_http: 401
+      admin_auth_login_http: 200
+      admin_auth_login_token_present: true
+      admin_auth_login_body_redacted: true
+      public_index_asset: "assets/index-CzL5LD6T.js"
+      public_index_asset_http: 200
+      public_index_asset_sha256: "9b3bcee39939625168c9d18c3ee929e4a700fb3a8ea253090d326108f6469d32"
+    hikari_checks:
+      repeated_stats_categories: "5/5 repeated checks returned stats=200 and categories=200"
+      post_90s_check: "stats=200 categories=200"
+      mysql_process_count_after_deploy: 6
+      mysql_threads_connected_after_deploy: 6
+      connection_unavailable_count_since_deploy: 0
+      apparent_connection_leak_count_since_deploy: 0
+      data_access_resource_failure_count_since_deploy: 0
+      sql_non_transient_connection_count_since_deploy: 0
+      startup_sqlsyntax_warning_note: "Hibernate ddl-auto update logged nonfatal existing-table auto-column SQLSyntaxErrorException warnings during startup; endpoints passed and quiet post-smoke log scan had 0 SQL/Hikari/error/exception lines."
+      quiet_60s_hikari_leak_timeout_error_exception_count: 0
+    deployment_logs:
+      frontend_error_count_since_deploy: 0
+      backend_runtime_hikari_or_pool_error_count: 0
+      backend_quiet_60s_error_exception_count: 0
+      backend_expected_invalid_auth_errors: "Intentional invalid-auth smoke logged invalid credentials only."
+      secret_indicator_handling: "Tokens/secrets not printed; auth token body redacted; MiniMax/API secrets not emitted."
+    rollback_readiness:
+      predeploy_backup_dir: "/opt/laudium-post/backups/lcp712-fullstack-20260519-0744-CAT"
+      backend_rollback_tag: "laudium-post-backend:rollback-lcp712-fullstack-predeploy-20260519-0744-CAT"
+      backend_rollback_image_id: "sha256:9252611cc5c9261045726d7f58a7c38e061643f7955f5bb5c0223dc42bf326f8"
+      frontend_rollback_tag: "laudium-post-frontend:rollback-lcp712-fullstack-predeploy-20260519-0744-CAT"
+      frontend_rollback_image_id: "sha256:3d35abd377f3a806482cba880c6d10fb921c984d4e35efea89ce53c2ef02b8d7"
+      rollback_command: "cd /opt/laudium-post && docker tag <rollback-tag> <service>:latest && docker compose -p laudium-post -f docker-compose.prod.yml up -d --no-deps --no-build --force-recreate backend frontend"
+      destructive_actions: "none; no docker compose down -v, no volume deletion, no DB drop/truncate/delete, no MySQL restart"
+    constraints:
+      final_e2e_ux: "not run by Elon; Jobs owns final user-story E2E/UX gate after Alex handoff"
+      lcp_or_azure_closure: "none"
+      db_destructive_action: "none"
+      volume_deletion: "none"
+      secrets: "redacted"
+    evidence_paths:
+      local: "C:\\Software\\SafAi\\LaudiumAPP\\deploy\\evidence.yaml"
+      server: "/opt/laudium-post/deploy/evidence.yaml"
+    jobs_handoff_evidence: "Production URL https://laudiumpost.co.za; API base https://laudiumpost.co.za/laudium/api/v1/; backend 4a9046e and frontend 3b6d8d27 are live; smoke/Hikari/auth deployment checks passed; Jobs should now run final UX/user-story testing."
+    return_to_alex: "DEPLOYED_READY_FOR_JOBS"
+  - timestamp_cat: "2026-05-19 05:58 CAT"
+    lcp_task_id: 712
+    environment: production
+    status: FAILED_ROLLED_BACK
+    actor: release-manager
+    project_folder: "C:\\Software\\SafAi\\LaudiumAPP"
+    frontend_repo: "C:\\Software\\SafAi\\LaudiumAPP\\Laudium Biz"
+    production_path: "/opt/laudium-post"
+    production_url: "https://laudiumpost.co.za"
+    approved_stage: DEPLOYMENT
+    production_approval: "production.deploy.approved=true; Chris approval recorded in Alex handoff"
+    source_gate:
+      result: clean_approved_commit
+      frontend_branch: main
+      frontend_commit: "3b6d8d27e8d3bee2db074268337b333ce6afd7ab"
+      commit_message: "Fix LCP712 auth auto-logout timer cap"
+      local_status: "git status --short empty; branch main ahead origin/main by 2"
+    predeploy_validation:
+      auth_persistence_test: "node test-auth-persistence.cjs -> 15 passed, 0 failed"
+      router_guardrail_test: "node test-router-guardrail.cjs -> 9 passed, 0 failed"
+      frontend_build: "cmd.exe /c npm.cmd run build -> exit 0"
+      local_dist_index_sha256: "76EEB277246DB63514D501A7CD82F2E1475E72D25EB46601C8E01E067E452588"
+      uploaded_dist_tar_sha256: "E9AF0C7943B6CCDFA6497D4EB8D9BC738A9C693EA6A9FC645B50B4AE7B0399F7"
+    attempted_deploy:
+      compose_file: "/opt/laudium-post/docker-compose.prod.yml"
+      compose_project: "laudium-post"
+      services: [frontend]
+      candidate_tag: "laudium-post-frontend:lcp712-3b6d8d27-clean-20260519-054706-CAT"
+      candidate_frontend_image_id: "sha256:9bea123436ebdfc53d9c8772c2cc9fb5971ebddbff3f1f5ad4b1f91b0650eb35"
+      deployment_command: "docker compose -p laudium-post -f docker-compose.prod.yml up -d --no-deps --no-build --force-recreate frontend"
+      initial_smoke: "home 200; admin 200; articles/stats 200; categories 200; invalid-auth 401"
+      final_smoke_failure: "categories became HTTP 500 with DataAccessResourceFailureException/HikariPool connection unavailable timed out after 20000ms; retry remained 500 and stats also timed out."
+      backend_hikari_timeout_count_since_10m: 26
+      backend_total_error_exception_since_10m: 117
+      secret_indicator_count: 0
+      frontend_error_count: 0
+    rollback_execution:
+      rollback_started_cat: "2026-05-19T05:56:26+02:00"
+      rollback_tag_used: "laudium-post-frontend:rollback-lcp712-clean-predeploy-20260519-054706-CAT"
+      restored_frontend_image_id: "sha256:3d35abd377f3a806482cba880c6d10fb921c984d4e35efea89ce53c2ef02b8d7"
+      rollback_command: "cd /opt/laudium-post && docker tag laudium-post-frontend:rollback-lcp712-clean-predeploy-20260519-054706-CAT laudium-post-frontend:latest && docker compose -p laudium-post -f docker-compose.prod.yml up -d --no-deps --no-build --force-recreate frontend"
+      post_rollback_containers: "frontend running restored image; backend running unchanged image; mysql running healthy"
+      post_rollback_smoke: "home 200; admin 200; articles/stats 500; categories 500; invalid-auth 401"
+      backend_state_after_rollback: "HikariPool-1 connection pool exhausted/timeouts continue in unchanged backend; frontend rollback completed but API health remains degraded."
+    rollback_readiness:
+      predeploy_backup_dir: "/opt/laudium-post/backups/lcp712-clean-3b6d8d27-20260519-054706-CAT"
+      candidate_image_preserved: "sha256:9bea123436ebdfc53d9c8772c2cc9fb5971ebddbff3f1f5ad4b1f91b0650eb35"
+      restored_image: "sha256:3d35abd377f3a806482cba880c6d10fb921c984d4e35efea89ce53c2ef02b8d7"
+      destructive_actions: "none; no docker compose down -v, no volume deletion, no DB drop/truncate/delete"
+    classification:
+      terminal_verdict: FAILED_ROLLED_BACK
+      blocker_owner_recommendation: "Return to Alex; backend/API Hikari pool exhaustion needs Sacha/infra follow-up before Jobs production UX retest."
+      no_final_e2e: "Elon did not run final browser E2E/UX and did not close user stories; Jobs remains next user-story gate only after Alex resolves/dispatches backend health blocker."
+    evidence_paths:
+      local: "C:\\Software\\SafAi\\LaudiumAPP\\deploy\\evidence.yaml"
+      server: "/opt/laudium-post/deploy/evidence.yaml"
+    return_to_alex: "FAILED_ROLLED_BACK"
+  - timestamp_cat: "2026-05-19 05:52 CAT"
+    lcp_task_id: 712
+    environment: production
+    status: DEPLOYED_READY_FOR_JOBS
+    actor: release-manager
+    project_folder: "C:\\Software\\SafAi\\LaudiumAPP"
+    frontend_repo: "C:\\Software\\SafAi\\LaudiumAPP\\Laudium Biz"
+    production_path: "/opt/laudium-post"
+    production_url: "https://laudiumpost.co.za"
+    approved_stage: DEPLOYMENT
+    production_approval: "production.deploy.approved=true; Chris approval recorded in Alex handoff"
+    source_gate:
+      result: clean_approved_commit
+      frontend_branch: main
+      frontend_commit: "3b6d8d27e8d3bee2db074268337b333ce6afd7ab"
+      commit_message: "Fix LCP712 auth auto-logout timer cap"
+      local_status: "git status --short empty; branch main ahead origin/main by 2"
+      deploy_contract_note: "Repo deploy contract is legacy/localtest-only; used established LCP712 production Docker Compose method from prior evidence."
+    predeploy_validation:
+      auth_persistence_test: "node test-auth-persistence.cjs -> 15 passed, 0 failed"
+      router_guardrail_test: "node test-router-guardrail.cjs -> 9 passed, 0 failed"
+      frontend_build: "cmd.exe /c npm.cmd run build -> exit 0"
+      local_dist_index_sha256: "76EEB277246DB63514D501A7CD82F2E1475E72D25EB46601C8E01E067E452588"
+      uploaded_dist_tar_sha256: "E9AF0C7943B6CCDFA6497D4EB8D9BC738A9C693EA6A9FC645B50B4AE7B0399F7"
+    deployment_identity:
+      compose_file: "/opt/laudium-post/docker-compose.prod.yml"
+      compose_project: "laudium-post"
+      services: [frontend]
+      deploy_tag: "laudium-post-frontend:lcp712-3b6d8d27-clean-20260519-054706-CAT"
+      frontend_image_id: "sha256:9bea123436ebdfc53d9c8772c2cc9fb5971ebddbff3f1f5ad4b1f91b0650eb35"
+      backend_image_id_unchanged: "sha256:9252611cc5c9261045726d7f58a7c38e061643f7955f5bb5c0223dc42bf326f8"
+      mysql_image_id_unchanged: "sha256:64756cc92f707eb504496d774353990bcb0f6999ddf598b6ad188f2da66bd000"
+      public_index_asset: "assets/index-CzL5LD6T.js"
+    commands_summary:
+      - "git source gate: clean main at 3b6d8d27e8d3bee2db074268337b333ce6afd7ab"
+      - "node test-auth-persistence.cjs and node test-router-guardrail.cjs"
+      - "cmd.exe /c npm.cmd run build"
+      - "tar clean local dist and scp to /tmp/laudium-frontend-dist-3b6d8d27.tgz"
+      - "docker tag laudium-post-frontend:latest laudium-post-frontend:rollback-lcp712-clean-predeploy-20260519-054706-CAT"
+      - "docker build uploaded dist image as laudium-post-frontend:lcp712-3b6d8d27-clean-20260519-054706-CAT and latest"
+      - "docker compose -p laudium-post -f docker-compose.prod.yml up -d --no-deps --no-build --force-recreate frontend"
+    health_checks:
+      compose_ps: "frontend running; backend running; mysql running healthy"
+      public_home_http: 200
+      public_admin_http: 200
+      public_articles_stats_http: 200
+      public_categories_http: 200
+      auth_login_invalid_contract_http: 401
+      frontend_local_http: 200
+      public_index_asset_matches_clean_build: true
+      final_smoke_at_cat: "2026-05-19T05:48:33+02:00"
+      quiet_check_at_cat: "2026-05-19T05:50:46+02:00"
+    deployment_logs:
+      frontend_error_since_5m: 0
+      backend_minimax_or_secret_indicator_since_5m: 0
+      backend_hikari_note: "One Hikari apparent connection leak warning appeared after smoke/auth probes at 2026-05-19T03:48:35Z; no timeout/exhaustion observed and final quiet 60s window had 0 Hikari/leak/timeout/exhaustion lines."
+      final_quiet_backend_error_exception_count: 0
+      final_quiet_frontend_error_count: 0
+      final_quiet_hikari_leak_timeout_exhaustion_count: 0
+      final_quiet_secret_indicator_count: 0
+    rollback_readiness:
+      predeploy_backup_dir: "/opt/laudium-post/backups/lcp712-clean-3b6d8d27-20260519-054706-CAT"
+      frontend_rollback_tag: "laudium-post-frontend:rollback-lcp712-clean-predeploy-20260519-054706-CAT"
+      frontend_rollback_image_id: "sha256:3d35abd377f3a806482cba880c6d10fb921c984d4e35efea89ce53c2ef02b8d7"
+      rollback_command: "cd /opt/laudium-post && docker tag laudium-post-frontend:rollback-lcp712-clean-predeploy-20260519-054706-CAT laudium-post-frontend:latest && docker compose -p laudium-post -f docker-compose.prod.yml up -d --no-deps --no-build --force-recreate frontend"
+      destructive_actions: "none; no docker compose down -v, no volume deletion, no DB drop/truncate/delete"
+    notes:
+      - "Final browser E2E/UX testing was not run by Elon; Jobs owns production UX/user-story gate after Alex dispatches Jobs."
+      - "Server checkout remains pre-existing dirty; deploy used a clean local dist artifact from approved commit and frontend-only --no-build compose recreate."
+    evidence_paths:
+      local: "C:\\Software\\SafAi\\LaudiumAPP\\deploy\\evidence.yaml"
+      server: "/opt/laudium-post/deploy/evidence.yaml"
+    return_to_alex: "DEPLOYED_READY_FOR_JOBS"
+  - timestamp_cat: "2026-05-19 05:15 CAT"
+    lcp_task_id: 712
+    environment: production
+    status: BLOCKED_NEEDS_ALEX
+    actor: release-manager
+    project_folder: "C:\\Software\\SafAi\\LaudiumAPP"
+    production_path: "/opt/laudium-post"
+    production_url: "https://laudiumpost.co.za"
+    approved_stage: DEPLOYMENT
+    production_approval: "production.deploy.approved=true; Chris approval recorded in Alex handoff"
+    source_gate:
+      result: blocked_source_ambiguous
+      frontend_repo: "C:\\Software\\SafAi\\LaudiumAPP\\Laudium Biz"
+      frontend_branch: main
+      frontend_commit: "55514ba183a2deb6694a2c7c2aab357e0fd3c087"
+      frontend_status: "branch ahead origin/main by 1, but working tree dirty"
+      dirty_paths:
+        - "src/composables/useAuth.js"
+        - "test-auth-persistence.cjs"
+        - "test-results/"
+      blocker: "Runtime auth timer fix exists as uncommitted local diff, so deployment source is ambiguous under Alex handoff hard rule. No new production deployment was performed by this job."
+    production_observed_readonly:
+      compose_file: "/opt/laudium-post/docker-compose.prod.yml"
+      compose_project: "laudium-post"
+      frontend_image_id_current: "sha256:3d35abd377f3a806482cba880c6d10fb921c984d4e35efea89ce53c2ef02b8d7"
+      backend_image_id_current: "sha256:9252611cc5c9261045726d7f58a7c38e061643f7955f5bb5c0223dc42bf326f8"
+      mysql_image_id_current: "sha256:64756cc92f707eb504496d774353990bcb0f6999ddf598b6ad188f2da66bd000"
+      containers: "frontend up about an hour; backend up 3 hours; mysql up 6 weeks healthy"
+    current_production_smoke_readonly:
+      public_home_http: 200
+      public_admin_http: 200
+      public_articles_stats_http: 200
+      public_categories_http: 200
+      auth_login_invalid_contract_http: 401
+      backend_hikari_warning_since_10m: 0
+      backend_minimax_or_secret_indicator_since_10m: 0
+      frontend_error_since_10m: 0
+      backend_error_exception_note: "Invalid-auth smoke intentionally logged BadCredentialsException; no Hikari timeout/exhaustion/leak or secret indicators observed."
+    commands_summary:
+      - "git branch/status/rev-parse/diff checks in frontend repo"
+      - "read deploy project/runtime/rollback/evidence files"
+      - "read-only SSH production docker compose ps/image/evidence inspection"
+    rollback_readiness:
+      existing_frontend_rollback_tag: "laudium-post-frontend:rollback-lcp712-auth-20260519-034936-CAT"
+      existing_frontend_rollback_image_id: "sha256:bfc2ae6c2032ce8b463a0ae4c3a8bf6a5dfa000e67220f59368c34716defa45e"
+      destructive_actions: "none; no docker compose down -v, no volume deletion, no DB drop/truncate/delete"
+    evidence_paths:
+      local: "C:\\Software\\SafAi\\LaudiumAPP\\deploy\\evidence.yaml"
+      server: "/opt/laudium-post/deploy/evidence.yaml"
+    return_to_alex: "BLOCKED_NEEDS_ALEX"
+  - timestamp_cat: "2026-05-19 03:58 CAT"
+    lcp_task_id: 712
+    environment: production
+    status: DEPLOYED_READY_FOR_JOBS
+    actor: release-manager
+    project_folder: "C:\\Software\\SafAi\\LaudiumAPP"
+    production_path: "/opt/laudium-post"
+    production_url: "https://laudiumpost.co.za"
+    approved_stage: DEPLOYMENT
+    production_approval: "production.deploy.approved=true; Chris approval recorded in Alex handoff"
+    source_scope:
+      frontend_repo: "C:\\Software\\SafAi\\LaudiumAPP\\Laudium Biz"
+      frontend_branch: main
+      frontend_commit: "55514ba183a2deb6694a2c7c2aab357e0fd3c087"
+      backend_repo: "C:\\Software\\SafAi\\LaudiumAPP\\lauduimbizAPI"
+      backend_branch: master
+      backend_commit: "8f0883e4d57bdea37c4b3951999167e4157f0f01"
+      approved_files_deployed:
+        - "Laudium Biz/src/composables/useAuth.js"
+        - "lauduimbizAPI/docs/api.yaml"
+      approved_files_committed_not_runtime_deployed:
+        - "Laudium Biz/test-auth-persistence.cjs"
+        - "Laudium Biz/docs/standartTest/"
+        - "Laudium Biz/tests/assets/"
+        - "Laudium Biz/tests/e2e/laudium-standard-tests.spec.ts"
+        - "Laudium Biz/tests/e2e/playwright.config.ts"
+        - "Laudium Biz/tsconfig.json"
+      excluded_artifacts_verified_absent_from_frontend_worktree:
+        - "test-parse.cjs"
+        - "test-results/"
+        - "test-results-after-verification/"
+        - "test-results-after-guardrail-detectors/"
+        - "tests/e2e/diagnose-login.spec.ts"
+        - "tests/e2e/login-variants.spec.ts"
+        - "tests/e2e/minimal.spec.ts"
+        - "tests/e2e/docs/"
+        - "tests/e2e/tests/"
+        - "debug-login.js"
+    deployment_identity:
+      compose_file: "/opt/laudium-post/docker-compose.prod.yml"
+      compose_project: "laudium-post"
+      services: [frontend]
+      frontend_candidate_tag: "laudium-post-frontend:lcp712-55514ba-8f0883e-20260519-0351-CAT"
+      frontend_image_id: "sha256:3d35abd377f3a806482cba880c6d10fb921c984d4e35efea89ce53c2ef02b8d7"
+      backend_image_id_unchanged: "sha256:9252611cc5c9261045726d7f58a7c38e061643f7955f5bb5c0223dc42bf326f8"
+      mysql_image_id_unchanged: "sha256:64756cc92f707eb504496d774353990bcb0f6999ddf598b6ad188f2da66bd000"
+      local_frontend_dist_index_sha256: "44D3D760538C7D46E6C39D936117EBAB03C46804BA7F0911FE32142E34D01B60"
+      local_backend_war_sha256: "FE1BD99EF7E14EB533F7FD491E40E4F62209E982B4AA6721DB188AF5A5740257"
+      server_source_useAuth_sha256: "70fc59e23163b8b39d73d995bc337a05318aa0e7268288d2d39bae9a2a435c2b"
+      server_source_api_yaml_sha256: "b49db2896eeb418c9e165a26b7e633cbe454f66ac51557c2673d96bbdfadbdd9"
+      public_index_asset: "assets/index-E80XPMO5.js"
+    rollback_readiness:
+      predeploy_backup_dir: "/opt/laudium-post/backups/lcp712-auth-persistence-20260519-034936-CAT"
+      frontend_rollback_tag: "laudium-post-frontend:rollback-lcp712-auth-20260519-034936-CAT"
+      frontend_rollback_image_id: "sha256:bfc2ae6c2032ce8b463a0ae4c3a8bf6a5dfa000e67220f59368c34716defa45e"
+      backend_rollback_tag: "laudium-post-backend:rollback-lcp712-auth-20260519-034936-CAT"
+      backend_rollback_image_id: "sha256:9252611cc5c9261045726d7f58a7c38e061643f7955f5bb5c0223dc42bf326f8"
+      rollback_required: false
+      destructive_actions: "none; no docker compose down -v, no volume deletion, no DB seed/drop/truncate"
+    commands_summary:
+      - "node test-auth-persistence.cjs -> 7 passed, 0 failed"
+      - "npm run build -> exit 0"
+      - ".\\mvnw.cmd -q -DskipTests package -> exit 0"
+      - "scp approved useAuth.js and docs/api.yaml to /tmp on production host"
+      - "install approved source files into existing production source tree"
+      - "docker compose -p laudium-post -f docker-compose.prod.yml build frontend -> BUILD_EXIT:0"
+      - "docker tag laudium-post-frontend:latest laudium-post-frontend:lcp712-55514ba-8f0883e-20260519-0351-CAT"
+      - "docker compose -p laudium-post -f docker-compose.prod.yml up -d frontend"
+    health_checks:
+      compose_ps: "backend running; frontend running; mysql running healthy"
+      public_home_http: 200
+      public_admin_http: 200
+      public_articles_stats_http: 200
+      public_categories_http: 200
+      auth_login_invalid_contract_http: 401
+      backend_container_articles_stats_http: 200
+      public_index_asset_matches_container: true
+      final_smoke_at_cat: "2026-05-19T04:03:20+02:00"
+      post_smoke_hikari_warning_observed: "One Hikari leak-detection warning appeared at 2026-05-19T02:04:21Z after smoke/auth probes; no timeout/exhaustion was observed."
+      final_quiet_window_since_utc: "2026-05-19T02:05:20Z"
+      final_quiet_backend_error_exception_count: 0
+      final_quiet_frontend_error_count: 0
+      final_quiet_hikari_leak_timeout_exhaustion_new_count: 0
+      final_quiet_minimax_or_api_key_indicator_new_count: 0
+    notes:
+      - "Final Jobs-style browser UX/E2E was not run by Elon; Jobs owns that gate after Alex dispatches Jobs."
+      - "An invalid-credential auth contract probe intentionally returned 401 and was not a real login attempt."
+      - "Server checkout had pre-existing dirty source state before this deploy; deploy touched only the approved runtime source files listed above and built/recreated frontend only."
+    evidence_paths:
+      local: "C:\\Software\\SafAi\\LaudiumAPP\\deploy\\evidence.yaml"
+      server: "/opt/laudium-post/deploy/evidence.yaml"
+    return_to_alex: "DEPLOYED_READY_FOR_JOBS"
+  - id: 20260519-012937-localtest-blocked-fact-inference
+    type: blocked
+    environment: localtest
+    result: blocked_needs_facts
+    started_at: 2026-05-19T01:29:37.212Z
+    completed_at: 2026-05-19T01:29:37.212Z
+    duration_seconds: 0
+    deploy_identity:
+      repo_path: C:\Software\SafAi\LaudiumAPP
+      repository_url: ""
+      branch: hibernate-conversion
+      git_commit: b8d63df
+    phase_status:
+      - phase: localtest-fact-inference
+        status: blocked
+        duration_seconds: 0
+    commands_run:
+      - command: deployment-governance localtest fact inference from repo files
+        dry_run: true
+        result: updated localtest YAML only; no command executed
+    changed_files:
+      - deploy/localtest.yaml
+      - deploy/localtest_config_runtime.yaml
+      - deploy/evidence.yaml
+    inferred_facts: []
+    remaining_missing_facts:
+      - public_url
+      - healthcheck_url
+      - ssh_mcp_target
+      - server_deploy_path
+      - deploy_command
+      - rollback_command
+      - production_credentials
+      - test_environment_url
+      - test_accounts_or_seed_data
+    unblock: Review inferred localtest commands, fill exact missing deployment/test facts, then run deployment-governance validators before any deployment.
+  - id: 20260519-011952-localtest-blocked-laudiumapp
+    type: blocked
+    environment: localtest
+    result: blocked_needs_facts
+    started_at: 2026-05-19T01:19:52.495Z
+    completed_at: 2026-05-19T01:19:52.589Z
+    duration_seconds: 0
+    deploy_identity:
+      repo_path: C:\Software\SafAi\LaudiumAPP
+      repository_url: ""
+      branch: hibernate-conversion
+      git_commit: b8d63df
+    phase_status:
+      - phase: deploy-init
+        status: blocked
+        duration_seconds: 0
+    commands_run:
+      - command: /deploy:init from codeindex
+        dry_run: true
+        result: created deploy contract only; no deployment command executed
+    changed_files:
+      - deploy/project-config.yaml
+      - deploy/localtest.yaml
+      - deploy/localtest_config_runtime.yaml
+      - deploy/provisioning-evidence.yaml
+      - deploy/evidence.yaml
+      - deploy/rollback.yaml
+      - deploy/scripts/deploy-localtest.ps1
+      - deploy/scripts/deploy-localtest.sh
+      - deploy/scripts/rollback.ps1
+      - deploy/scripts/rollback.sh
+      - deploy/scripts/verify-deploy.ps1
+      - deploy/scripts/verify-deploy.sh
+    missing_facts:
+      - public_url
+      - healthcheck_url
+      - ssh_mcp_target
+      - server_deploy_path
+      - deploy_command
+      - rollback_command
+      - production_credentials
+      - test_environment_url
+      - test_accounts_or_seed_data
+    unblock: Fill exact environment facts in deploy/*.yaml and deploy/*_config_runtime.yaml, then run deployment-governance validators. Do not deploy until validation passes.

@@ -1,0 +1,14 @@
+schema_version: "1.0"
+standard_version: 2026-05-18
+rollback:
+  strategy: frontend_image_restore_only
+  environment: production
+  exact_command: "cd /opt/laudium-post && docker tag sha256:c8efaad3aa147abd3b115b3100ff9c381447b9beb5692a912626a4265fafd37f laudium-post-frontend:latest && docker compose -p laudium-post -f docker-compose.prod.yml up -d --no-deps frontend"
+  commands:
+    - "bash deploy/scripts/rollback.sh --execute --target-image sha256:c8efaad3aa147abd3b115b3100ff9c381447b9beb5692a912626a4265fafd37f"
+  verify:
+    - "docker inspect laudium-frontend --format '{{.Image}}'"
+    - "curl -fsS https://laudiumpost.co.za/ >/dev/null"
+    - "curl -fsS https://laudiumpost.co.za/admin >/dev/null"
+    - "curl -fsS https://laudiumpost.co.za/laudium/api/v1/articles/stats >/dev/null"
+  notes: "Rollback restores only laudium-post-frontend:latest and recreates only the frontend service with --no-deps; backend, mysql, DB, and volumes are not touched."

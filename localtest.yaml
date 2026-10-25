@@ -1,0 +1,48 @@
+schema_version: "1.0"
+standard_version: 2026-05-18
+environment:
+  nickname: localtest
+  production: false
+  runtime_config_file: deploy/localtest_config_runtime.yaml
+server:
+  ssh_mcp_target: ""
+  host: ""
+  ssh_port: 22
+  username: ""
+application:
+  url: ""
+  healthcheck_url: ""
+  deploy_type: legacy
+source:
+  type: git
+  repository_url: ""
+  branch: hibernate-conversion
+  server_working_directory: ""
+dns:
+  provider: ""
+  zone: ""
+  records: []
+routing:
+  reverse_proxy: ""
+  config_path: ""
+  routes: []
+certificates:
+  mode: ""
+  cloudflare_ssl_mode: ""
+data_safety:
+  schema_migrations_allowed: false
+  allowed_migration_tools: []
+  destructive_data_changes_allowed: false
+  touches_active_file_storage: false
+dependencies:
+  required_provisioning: []
+commands:
+  precheck: []
+  deploy: []
+  verify: []
+production_controls:
+  approval_required: false
+  downtime:
+    expected: none
+    max_acceptable_minutes: 0
+    mitigation: []

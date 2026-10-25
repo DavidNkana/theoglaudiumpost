@@ -1,0 +1,44 @@
+# Local secrets and environment overrides
+.env
+.env.*
+!*.env.example
+
+# Product repo boundaries: source code is pushed in separate repos
+frontend/
+backend/
+
+# Frontend dependencies and builds
+frontend/node_modules/
+frontend/dist/
+frontend/dev-dist/
+frontend/.wrangler/
+
+# Backend local secrets, builds, and logs
+backend/src/main/resources/application.properties
+backend/src/main/resources/application-*.properties
+backend/src/main/resources/application.yml
+backend/src/main/resources/application-*.yml
+backend/target/
+*.log
+
+# Local test artifacts
+test-results/
+frontend/test-results/
+.playwright-mcp/
+
+# Preserved legacy/reference folders; not active source
+_related/
+
+# Archives and generated bundles
+*.zip
+*.tar
+*.tar.gz
+*.jar
+
+# Credential-bearing local test run history
+frontend/docs/standartTest/run-history/
+docs/standartTest/run-history/
+
+# Local tool state
+.claude/settings.local.json
+.gitnexus/
