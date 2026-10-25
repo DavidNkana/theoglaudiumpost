@@ -1,0 +1,23 @@
+openapi: 3.0.3
+info:
+  title: Laudium-post Backend API (pipeline contract)
+  version: 1.0.0
+servers:
+  - url: /laudium/api/v1
+paths:
+  /laudium/api/v1/articles/stats:
+    get:
+      operationId: getArticleStats
+      summary: Article stats (public)
+      x-smoke: true
+      responses:
+        '200':
+          description: OK
+  /laudium/api/v1/categories:
+    get:
+      operationId: listCategories
+      summary: List categories (public)
+      x-smoke: true
+      responses:
+        '200':
+          description: OK

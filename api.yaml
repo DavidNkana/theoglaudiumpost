@@ -1,0 +1,23 @@
+openapi: 3.0.3
+info:
+  title: Laudium-post Frontend API contract (via nginx /api proxy)
+  version: 1.0.0
+servers:
+  - url: /api/v1
+paths:
+  /api/v1/articles/stats:
+    get:
+      operationId: getArticleStats
+      summary: Article stats (public)
+      x-smoke: true
+      responses:
+        '200':
+          description: OK
+  /api/v1/categories:
+    get:
+      operationId: listCategories
+      summary: List categories (public)
+      x-smoke: true
+      responses:
+        '200':
+          description: OK

@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!--
+    NEWSPAPER ICON - DARK MODE (φ PADDING)
+    ======================================
+
+    Based on laudium-newspaper-phi-light.svg
+    Colors inverted for dark theme:
+    - Background: #2c3e50 (dark blue-gray)
+    - Elements: #f5edd6 (warm cream)
+
+    Dimensions: 247.214 × 400 (golden rectangle)
+    Padding ratio: bottom/top = 69.216/42.784 = φ
+  -->
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="89" ry="89" fill="#2c3e50"/>
+
+  <!-- NEWSPAPER ICON -->
+  <g transform="translate(132.393, 42.784)">
+
+    <!-- Back paper layer -->
+    <rect x="14" y="18" width="247.214" height="400" rx="20" ry="20"
+          fill="none" stroke="#f5edd6" stroke-width="9"/>
+
+    <!-- Main newspaper -->
+    <rect x="0" y="0" width="247.214" height="400" rx="20" ry="20"
+          fill="#2c3e50" stroke="#f5edd6" stroke-width="9"/>
+
+    <!-- NEWS header -->
+    <text x="123.607" y="48"
+          font-family="Georgia, 'Times New Roman', serif"
+          font-size="40"
+          font-weight="700"
+          fill="#f5edd6"
+          text-anchor="middle"
+          letter-spacing="6">NEWS</text>
+
+    <!-- Header divider -->
+    <line x1="20" y1="64" x2="227.214" y2="64" stroke="#f5edd6" stroke-width="3"/>
+
+    <!-- Image block -->
+    <rect x="20" y="76" width="94.42" height="152.786" rx="6" ry="6" fill="#f5edd6"/>
+
+    <!-- Text lines -->
+    <line x1="126.42" y1="96" x2="227.214" y2="96" stroke="#f5edd6" stroke-width="7" stroke-linecap="round"/>
+    <line x1="126.42" y1="124" x2="227.214" y2="124" stroke="#f5edd6" stroke-width="7" stroke-linecap="round"/>
+    <line x1="126.42" y1="152" x2="227.214" y2="152" stroke="#f5edd6" stroke-width="7" stroke-linecap="round"/>
+    <line x1="126.42" y1="180" x2="190" y2="180" stroke="#f5edd6" stroke-width="7" stroke-linecap="round"/>
+    <line x1="126.42" y1="208" x2="227.214" y2="208" stroke="#f5edd6" stroke-width="7" stroke-linecap="round"/>
+
+    <!-- Bottom content -->
+    <line x1="20" y1="260" x2="227.214" y2="260" stroke="#f5edd6" stroke-width="7" stroke-linecap="round"/>
+    <line x1="20" y1="296" x2="227.214" y2="296" stroke="#f5edd6" stroke-width="7" stroke-linecap="round"/>
+    <line x1="20" y1="332" x2="227.214" y2="332" stroke="#f5edd6" stroke-width="7" stroke-linecap="round"/>
+    <line x1="20" y1="368" x2="136" y2="368" stroke="#f5edd6" stroke-width="7" stroke-linecap="round"/>
+
+  </g>
+
+</svg>

@@ -1,0 +1,72 @@
+# iOS -> TestFlight + App Store review pipeline for the LaudiumBiz Capacitor app.
+# Builds from this frontend repo (Capacitor generates ios/). macOS-latest agent.
+# Signing via fastlane match (cert+profile stored in the Laudium-post-certs repo).
+#
+# Variable group "laudium-ios-signing": ASC_KEY_ID, ASC_ISSUER_ID, MATCH_PASSWORD
+#   (secret), MATCH_GIT_BASIC_AUTHORIZATION (secret). Secure file: AuthKey.p8.
+trigger:
+  branches:
+    include: [main]
+  paths:
+    include:
+      - src/
+      - capacitor.config.json
+      - package.json
+      - ios/
+pool:
+  vmImage: 'macOS-latest'
+variables:
+  - group: laudium-ios-signing
+stages:
+  - stage: ios_testflight
+    displayName: 'Build iOS + TestFlight + submit for review'
+    jobs:
+      - job: build
+        timeoutInMinutes: 60
+        steps:
+          - task: Bash@3
+            displayName: 'Select newest Xcode (Apple requires iOS 26 SDK / Xcode 26+)'
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                echo "Installed Xcodes:"; ls -d /Applications/Xcode*.app 2>/dev/null || true
+                LATEST=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1)
+                [ -z "$LATEST" ] && LATEST=/Applications/Xcode.app
+                echo "Selecting $LATEST"
+                sudo xcode-select -s "$LATEST/Contents/Developer"
+                xcodebuild -version
+          - task: NodeTool@0
+            displayName: 'Use Node 20'
+            inputs:
+              versionSpec: '20.x'
+          - task: DownloadSecureFile@1
+            name: ascKey
+            displayName: 'Download App Store Connect API key (.p8)'
+            inputs:
+              secureFile: 'AuthKey.p8'
+          - task: Bash@3
+            displayName: 'Build web + generate Capacitor iOS project'
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                npm ci
+                npm run build
+                [ -d ios ] || npx cap add ios
+                npx cap sync ios
+                npx @capacitor/assets generate --ios
+          - task: Bash@3
+            displayName: 'fastlane: match sign + archive + TestFlight + submit'
+            env:
+              ASC_KEY_ID: $(ASC_KEY_ID)
+              ASC_ISSUER_ID: $(ASC_ISSUER_ID)
+              ASC_KEY_PATH: $(ascKey.secureFilePath)
+              MATCH_PASSWORD: $(MATCH_PASSWORD)
+              MATCH_GIT_BASIC_AUTHORIZATION: $(MATCH_GIT_BASIC_AUTHORIZATION)
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                gem install fastlane --no-document
+                fastlane ios beta

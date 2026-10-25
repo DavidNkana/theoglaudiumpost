@@ -1,0 +1,7 @@
+Fix: Add Chart.js Filler plugin for line chart with fill option
+
+- Added Filler plugin import and registration in ArticlesTimeline.vue
+- Fixed error "Tried to use the 'fill' option without the 'Filler' plugin enabled"
+- Added documentation explaining the issue and solution
+
+This fix resolves the error that occurred when navigating to the admin dashboard after login. The Line chart in the ArticlesTimeline component now renders correctly with the fill effect.

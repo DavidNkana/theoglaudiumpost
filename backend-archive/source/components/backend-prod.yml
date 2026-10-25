@@ -1,0 +1,129 @@
+name: Laudium-post-backend-prod
+trigger:
+  branches:
+    include: [main]
+  paths:
+    include: [src/, api.yaml, scripts/, components/, api-prod-endpoints.json, api-prod-test-fixtures.yaml]
+pool:
+  vmImage: 'ubuntu-latest'
+variables:
+  - group: Laudium-post-prod-vg
+  - name: COMPONENT
+    value: backend
+stages:
+  - stage: wait_for_test_pipeline
+    displayName: 'Wait for backend-test Succeeded on this SHA'
+    jobs:
+      - job: check
+        steps:
+          - checkout: none
+          - task: Bash@3
+            displayName: 'Query Azure DevOps for prior backend-test run on this SHA'
+            env:
+              SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                SHA="$(Build.SourceVersion)"
+                PIPELINE_NAME="Laudium-post-backend-test"
+                API_BASE="$(System.CollectionUri)$(System.TeamProject)/_apis"
+                DEF_ID=$(curl -fsS -H "Authorization: Bearer ${SYSTEM_ACCESSTOKEN}" \
+                  "${API_BASE}/build/definitions?name=${PIPELINE_NAME}&api-version=7.1" \
+                  | jq -r '.value[0].id // empty')
+                if [ -z "$DEF_ID" ]; then
+                  echo "##vso[task.logissue type=error]Pipeline definition ${PIPELINE_NAME} not found"
+                  exit 1
+                fi
+                COUNT=$(curl -fsS -H "Authorization: Bearer ${SYSTEM_ACCESSTOKEN}" \
+                  "${API_BASE}/build/builds?definitions=${DEF_ID}&sourceVersion=${SHA}&resultFilter=succeeded&statusFilter=completed&$$top=1&api-version=7.1" \
+                  | jq -r '.count // (.value | length)')
+                if [ "$COUNT" = "0" ] || [ "$COUNT" = "null" ]; then
+                  echo "##vso[task.logissue type=error]No Succeeded run of ${PIPELINE_NAME} on ${SHA}. Prod deploy blocked."
+                  exit 1
+                fi
+                echo "Found ${COUNT} succeeded ${PIPELINE_NAME} build(s) on ${SHA}"
+  - stage: build
+    displayName: 'Build backend (push to ACR)'
+    dependsOn: wait_for_test_pipeline
+    jobs:
+      - job: build
+        steps:
+          - task: Bash@3
+            displayName: 'Docker build and push backend prod image to ACR'
+            env:
+              ACR_PASSWORD: $(ACR_PASSWORD)
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                docker run --privileged --rm tonistiigi/binfmt --install arm64
+                IMAGE="$(ACR_REGISTRY)/laudium-post-backend:$(Build.SourceVersion)"
+                echo "$ACR_PASSWORD" | docker login "$(ACR_REGISTRY)" -u "$(ACR_USERNAME)" --password-stdin
+                docker build --platform linux/arm64 -t "$IMAGE" -f Dockerfile .
+                docker push "$IMAGE"
+  - stage: deploy_to_prod
+    displayName: 'Deploy to prod (SSH remote Docker)'
+    dependsOn: [build, wait_for_test_pipeline]
+    jobs:
+      - deployment: prod_deploy
+        environment: prod
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - task: SSH@0
+                  displayName: 'Deploy backend image on prod (docker run + compose env)'
+                  inputs:
+                    sshEndpoint: 'prod-ssh-Laudium-post'
+                    failOnStdErr: false
+                    runOptions: 'inline'
+                    inline: |
+                      set -euo pipefail
+                      IMAGE="$(ACR_REGISTRY)/laudium-post-backend:$(Build.SourceVersion)"
+                      echo '$(ACR_PASSWORD)' | docker login '$(ACR_REGISTRY)' -u '$(ACR_USERNAME)' --password-stdin
+                      docker pull "$IMAGE"
+                      docker tag "$IMAGE" laudium-post-backend:latest
+                      cd /opt/laudium-post
+                      docker compose -p laudium-post -f docker-compose.prod.yml up -d --no-deps --no-build backend
+                - task: Bash@3
+                  displayName: 'Health check backend via frontend /api proxy'
+                  inputs:
+                    targetType: inline
+                    script: |
+                      set -euo pipefail
+                      for i in $(seq 1 30); do
+                        if curl -fsS "$(PROD_PUBLIC_URL)/api/v1/categories" | grep -q '"slug"'; then exit 0; fi
+                        sleep 5
+                      done
+                      echo "Prod backend health check failed (JSON API not reachable via /api proxy)"; exit 1
+                - task: NodeTool@0
+                  inputs:
+                    versionSpec: '20.x'
+                - task: Bash@3
+                  displayName: 'Install pipeline script dependencies'
+                  inputs:
+                    targetType: inline
+                    script: |
+                      set -euo pipefail
+                      npm ci --prefix scripts
+                - task: Bash@3
+                  displayName: 'Run D18 smoke test against prod'
+                  inputs:
+                    targetType: inline
+                    script: |
+                      set -euo pipefail
+                      node scripts/d18-smoke-test.mjs --base-url "$(PROD_PUBLIC_URL)" --endpoints api-prod-endpoints.json
+                - task: Bash@3
+                  displayName: 'Run api-coverage-check.mjs against prod'
+                  inputs:
+                    targetType: inline
+                    script: |
+                      set -euo pipefail
+                      node scripts/api-coverage-check.mjs api.yaml api-prod-test-fixtures.yaml "$(PROD_PUBLIC_URL)" $(Build.ArtifactStagingDirectory)/prod-api-coverage.json
+                      COVERAGE=$(jq -r .coverage $(Build.ArtifactStagingDirectory)/prod-api-coverage.json)
+                      if [ "$COVERAGE" != "100" ]; then
+                        echo "##vso[task.logissue type=error]prod api coverage: $COVERAGE% (need 100%)"
+                        exit 1
+                      fi

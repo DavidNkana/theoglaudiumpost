@@ -1,0 +1,9 @@
+{
+  "comment": "Used only by dependency-cruiser to resolve the @/* alias when building the module graph for the architecture gate.",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    }
+  }
+}

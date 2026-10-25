@@ -1,0 +1,46 @@
+[
+  {
+    "method": "GET",
+    "path": "/"
+  },
+  {
+    "method": "GET",
+    "path": "/payment/success/:id"
+  },
+  {
+    "method": "GET",
+    "path": "/payment/receipt/:id"
+  },
+  {
+    "method": "GET",
+    "path": "/payment/cancel/:id"
+  },
+  {
+    "method": "GET",
+    "path": "/project-documentation"
+  },
+  {
+    "method": "GET",
+    "path": "/admin/login"
+  },
+  {
+    "method": "GET",
+    "path": "/admin/prompts"
+  },
+  {
+    "method": "GET",
+    "path": "/403"
+  },
+  {
+    "method": "GET",
+    "path": "/404"
+  },
+  {
+    "method": "GET",
+    "path": "/:pathMatch(.*)*"
+  },
+  {
+    "method": "GET",
+    "path": "/business/register"
+  }
+]

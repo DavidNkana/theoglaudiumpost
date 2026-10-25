@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 647 400" width="647" height="400">
+  <!--
+    MAIN LOGO - LIGHT MODE (φ PADDING)
+    ==================================
+
+    Background: #f5edd6 (warm cream)
+    Elements: #2c3e50 (dark blue-gray)
+  -->
+
+  <!-- Background -->
+  <rect width="647" height="400" fill="#f5edd6"/>
+
+  <!-- NEWSPAPER ICON (scaled from φ padding design) -->
+  <g transform="translate(40, 21.392)">
+
+    <!-- Back paper layer -->
+    <rect x="8.68" y="11.16" width="153.27" height="248" rx="12.4" ry="12.4"
+          fill="none" stroke="#2c3e50" stroke-width="5.58"/>
+
+    <!-- Main newspaper -->
+    <rect x="0" y="0" width="153.27" height="248" rx="12.4" ry="12.4"
+          fill="#f5edd6" stroke="#2c3e50" stroke-width="5.58"/>
+
+    <!-- NEWS header -->
+    <text x="76.635" y="29.76"
+          font-family="Georgia, 'Times New Roman', serif"
+          font-size="24.8"
+          font-weight="700"
+          fill="#2c3e50"
+          text-anchor="middle"
+          letter-spacing="3.72">NEWS</text>
+
+    <!-- Header divider -->
+    <line x1="12.4" y1="39.68" x2="140.87" y2="39.68" stroke="#2c3e50" stroke-width="1.86"/>
+
+    <!-- Image block -->
+    <rect x="12.4" y="47.12" width="58.54" height="94.73" rx="3.72" ry="3.72" fill="#2c3e50"/>
+
+    <!-- Text lines -->
+    <line x1="78.38" y1="59.52" x2="140.87" y2="59.52" stroke="#2c3e50" stroke-width="4.34" stroke-linecap="round"/>
+    <line x1="78.38" y1="76.88" x2="140.87" y2="76.88" stroke="#2c3e50" stroke-width="4.34" stroke-linecap="round"/>
+    <line x1="78.38" y1="94.24" x2="140.87" y2="94.24" stroke="#2c3e50" stroke-width="4.34" stroke-linecap="round"/>
+    <line x1="78.38" y1="111.6" x2="117.8" y2="111.6" stroke="#2c3e50" stroke-width="4.34" stroke-linecap="round"/>
+    <line x1="78.38" y1="128.96" x2="140.87" y2="128.96" stroke="#2c3e50" stroke-width="4.34" stroke-linecap="round"/>
+
+    <!-- Bottom content -->
+    <line x1="12.4" y1="161.2" x2="140.87" y2="161.2" stroke="#2c3e50" stroke-width="4.34" stroke-linecap="round"/>
+    <line x1="12.4" y1="183.52" x2="140.87" y2="183.52" stroke="#2c3e50" stroke-width="4.34" stroke-linecap="round"/>
+    <line x1="12.4" y1="205.84" x2="140.87" y2="205.84" stroke="#2c3e50" stroke-width="4.34" stroke-linecap="round"/>
+    <line x1="12.4" y1="228.16" x2="84.32" y2="228.16" stroke="#2c3e50" stroke-width="4.34" stroke-linecap="round"/>
+
+  </g>
+
+  <!-- TEXT BLOCK -->
+  <g transform="translate(267.124, 0)">
+
+    <text y="175" fill="#2c3e50">
+      <tspan x="0"
+             font-family="Georgia, 'Times New Roman', serif"
+             font-size="62"
+             font-weight="700"
+             letter-spacing="1">Laudium</tspan>
+      <tspan dx="-4"
+             font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+             font-size="62"
+             font-weight="400"
+             letter-spacing="0"> </tspan>
+      <tspan dx="-4"
+             font-family="Georgia, 'Times New Roman', serif"
+             font-size="62"
+             font-weight="700"
+             letter-spacing="1">POST</tspan>
+    </text>
+
+  </g>
+
+</svg>

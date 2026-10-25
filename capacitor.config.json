@@ -1,0 +1,63 @@
+{
+  "appId": "co.za.laudiumpost",
+  "appName": "Laudium POST",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https",
+    "iosScheme": "https",
+    "allowNavigation": [
+      "laudiumpost.co.za",
+      "*.laudiumpost.co.za",
+      "server.safai.co.za",
+      "res.cloudinary.com",
+      "*.onesignal.com"
+    ]
+  },
+  "ios": {
+    "contentInset": "automatic",
+    "allowsLinkPreview": true,
+    "scrollEnabled": true,
+    "backgroundColor": "#f5edd6",
+    "allowsInlineMediaPlayback": true,
+    "limitsNavigationsToAppBoundDomains": false,
+    "webContentsDebuggingEnabled": false
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "initialFocus": true,
+    "handleBackButton": false,
+    "resizeOnFullScreen": true,
+    "overscroll": true,
+    "webContentsDebuggingEnabled": false,
+    "backgroundColor": "#f5edd6"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "launchAutoHide": true,
+      "backgroundColor": "#f5edd6",
+      "androidSplashResourceName": "splash",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false,
+      "splashFullScreen": false,
+      "splashImmersive": false
+    },
+    "App": {
+      "backgroundMode": "persist",
+      "webViewAllowBackForwardNavigationGestures": true
+    },
+    "StatusBar": {
+      "style": "light",
+      "backgroundColor": "#1a252f",
+      "overlaysWebView": false,
+      "androidOverlaysWebView": false
+    },
+    "NavigationBar": {
+      "backgroundColor": "#1a252f"
+    },
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}

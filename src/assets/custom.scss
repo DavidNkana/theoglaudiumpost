@@ -1,0 +1,72 @@
+// Import Bootstrap functions & variables first
+@import "bootstrap/scss/functions";
+@import "bootstrap/scss/variables";
+@import "bootstrap/scss/mixins";
+@import "bootstrap/scss/utilities";
+
+// Extend font-size utilities with breakpoints
+$utilities: map-merge(
+  $utilities,
+  (
+    "font-size": (
+      responsive: true,
+      property: font-size,
+      class: fs,
+      values: (
+        1: 0.75rem,
+        2: 1rem,
+        3: 1.25rem,
+        4: 1.5rem,
+        5: 2rem,
+        6: 2.5rem
+      )
+    )
+  )
+);
+
+// Now import Bootstrap to generate everything
+@import "bootstrap/scss/bootstrap";
+
+
+// Custom variables
+$primary: #FFC107; // Yellow for headings and highlights
+$body-bg: #1A2B2A; // Dark greenish-black background
+$body-color: #FFFFFF; // White text for contrast
+$success: #28A745; // Green for accents/buttons
+$font-family-sans-serif: 'Arial', sans-serif; // Match the font style
+
+// Import Bootstrap
+@import "~bootstrap/scss/bootstrap";
+
+// Custom styles
+body {
+  background-color: $body-bg;
+  color: $body-color;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: $primary;
+}
+
+.btn-primary {
+  background-color: $success;
+  border-color: $success;
+}
+
+.btn-primary:hover {
+  background-color: darken($success, 10%);
+  border-color: darken($success, 10%);
+}
+
+.card {
+  background-color: lighten($body-bg, 10%);
+  border: none;
+}
+
+.nav-link {
+  color: $body-color !important;
+}
+
+.nav-link:hover {
+  color: $primary !important;
+}

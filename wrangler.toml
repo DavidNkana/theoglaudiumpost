@@ -1,0 +1,10 @@
+name = "laudium-biz"
+main = "worker.js"
+compatibility_date = "2024-09-01"
+
+# Serve static assets from the Vite build output
+assets = { directory = "dist", binding = "ASSETS" }
+
+[observability]
+enabled = true
+ 

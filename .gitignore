@@ -1,0 +1,51 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+android
+dev-dist
+node_modules
+.DS_Store
+dist
+dist-ssr
+coverage
+.cov/
+*.local
+
+/cypress/videos/
+/cypress/screenshots/
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.env
+.env.*
+!.env.example
+
+# Local mobile/build outputs and bundles
+android/
+ios/
+*.zip
+
+# The Spring Boot source is retained outside the Vercel build path.
+!backend-archive/source/
+!backend-archive/source/**
+backend-archive/source/scripts/node_modules/
+
+*.tsbuildinfo
+/nbproject/private/
+
+resources/android/**/*
+# Credential-bearing local test run history
+docs/standartTest/run-history/

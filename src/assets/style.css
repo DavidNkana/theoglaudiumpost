@@ -1,0 +1,193 @@
+/* Section Headers */
+.section-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #000; /* Black for light theme */
+}
+
+.section-line {
+    height: 1px;
+    background-color: #d4c5a0; /* Darker beige for subtle divider */
+}
+
+.section-link {
+    color: #000 !important; /* Black text */
+    text-decoration: none !important;
+}
+.section-link:hover {
+    font-weight: 500 !important;
+    color: var(--secondary) !important; /* Gold on hover */
+}
+
+.link-clean {
+    text-decoration: none !important;
+    background-color: transparent !important;
+}
+
+.link-clean:hover,
+.link-clean:focus,
+.link-clean:active {
+    text-decoration: none !important;
+    background-color: transparent !important;
+}
+
+a:hover,
+a:focus,
+a:active {
+    text-decoration: none !important;
+    color: #ffc107 !important; /* Gold hover color */
+    background-color: transparent !important;
+}
+
+/* SHIMMER */
+.shimmer {
+    position: relative;
+    overflow: hidden;
+    background: #f0e5c8; /* Slightly darker beige for shimmer effect */
+}
+
+.shimmer::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -150px;
+    width: 100px;
+    height: 100%;
+    background: linear-gradient(
+            to right,
+            transparent 0%,
+            rgba(255, 193, 7, 0.3) 50%, /* Gold shimmer */
+            transparent 100%
+    );
+    animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        left: -150px;
+    }
+    100% {
+        left: 100%;
+    }
+}
+
+.capitalize {
+    text-transform: capitalize;
+}
+
+/* Pagination - Updated to match yellow/gold theme */
+.page-link {
+    color: #000; /* Black text */
+    background-color: #fff; /* White background */
+    border-color: #ddd;
+}
+
+.page-link:hover {
+    color: #fff;
+    background-color: #ffc107; /* Gold on hover */
+    border-color: #ffc107;
+}
+
+.page-item:focus,
+.page-link:focus {
+    border-color: #ffc107; /* Gold focus */
+    box-shadow: none !important;
+}
+
+.page-item.active .page-link {
+    background-color: #ffc107; /* Gold active state */
+    border-color: #ffc107;
+    color: #fff;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.form-control:focus {
+    border-color: #ffc107; /* Gold focus for form inputs */
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.25) !important;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+    color: var(--secondary) !important;
+}
+
+.bg-success {
+    background-color: #ffc107 !important; /* Use gold instead of green */
+}
+
+.btn-success {
+    background-color: #ffc107 !important; /* Gold button */
+    border-color: #ffc107 !important;
+    color: #000 !important; /* Black text for better contrast */
+    font-weight: 600;
+}
+
+.btn-success:hover {
+    background-color: #e6ad06 !important; /* Darker gold on hover */
+    border-color: #e6ad06 !important;
+    color: #000 !important;
+}
+
+@keyframes bounceCTA {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-4px);
+    }
+}
+
+.animate-cta {
+    animation: bounceCTA 2.5s ease-in-out infinite;
+    transition: all 0.3s ease;
+    box-shadow: 0 0.5rem 1rem rgba(255, 193, 7, 0.3);
+    border-radius: 0.5rem;
+}
+
+.animate-cta:hover {
+    background-color: #ffc107 !important;
+    transform: scale(1.05);
+    box-shadow: 0 0.75rem 1.25rem rgba(255, 193, 7, 0.4);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    color: #000 !important; /* Black text for better readability */
+    font-weight: 600;
+}
+
+/* Sidebar Specific Styles */
+.sidebar {
+    background-color: #fff; /* White sidebar background */
+    border-left: 1px solid #d4c5a0; /* Subtle beige border */
+}
+
+.sidebar-title {
+    color: #000;
+    font-weight: 700;
+    border-bottom: 2px solid #ffc107; /* Gold accent */
+}
+
+.sidebar-link {
+    color: #000;
+    transition: all 0.2s ease;
+}
+
+.sidebar-link:hover {
+    color: #ffc107;
+    padding-left: 8px;
+}
+
+/* Card Styles for Sidebar Widgets */
+.sidebar-card {
+    background-color: #fff;
+    border: 1px solid #e8dfc0;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.sidebar-card:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-color: #ffc107;
+}

@@ -1,0 +1,29 @@
+name: CI
+
+# Quality gate (AGENTS Multi-Stack Quality Gate Contract — JS/TS).
+# Runs the same `verify` pipeline as locally: architecture gate, 100%-per-file
+# coverage gate, and build. Any failing gate blocks the merge.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Architecture gate (dependency-cruiser)
+        run: npm run arch
+      - name: Unit/component tests + 100%-per-file coverage gate
+        run: npm run coverage
+      - name: Production build
+        run: npm run build
+      - name: E2E (Playwright)
+        run: npx playwright install --with-deps && npm run test:e2e

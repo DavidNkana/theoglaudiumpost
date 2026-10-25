@@ -1,0 +1,61 @@
+name: Laudium-post-android-prod
+trigger:
+  branches:
+    include: [main]
+  paths:
+    include: [android/]
+pool:
+  vmImage: ubuntu-latest
+variables:
+  - group: Laudium-post-prod-vg
+  - name: COMPONENT
+    value: android
+stages:
+  - stage: build
+    displayName: 'Gradle assembleRelease (Android)'
+    jobs:
+      - job: gradle_build
+        steps:
+          - task: Gradle@3
+            inputs:
+              gradleWrapperFile: 'android/gradlew'
+              tasks: 'assembleRelease'
+  - stage: upload_to_play_internal
+    displayName: 'Upload to Google Play internal track'
+    dependsOn: build
+    jobs:
+      - job: play_upload
+        steps:
+          - task: GooglePlay@3
+            inputs:
+              serviceEndpoint: 'android-Laudium-post'
+              apkFile: '$(Build.ArtifactStagingDirectory)/app-release.aab'
+              track: 'internal'
+  - stage: report
+    displayName: 'Post Android build status to PR / Initiative'
+    dependsOn: [build, upload_to_play_internal]
+    condition: always()
+    jobs:
+      - job: report
+        steps:
+          - task: Bash@3
+            displayName: 'Post status to PR / Initiative (Ed25519 signed via controller)'
+            env:
+              TEST_ENV_CONTROLLER_URL: $(TEST_ENV_CONTROLLER_URL)
+              TEST_ED25519_PRIVATE_KEY_B64: $(TEST_ED25519_PRIVATE_KEY_B64)
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                echo "Android prod build $(Build.BuildId) uploaded to Play Store internal track"
+                cat <<EOF > $(Build.ArtifactStagingDirectory)/mobile-status-body.json
+                {"component":"android","buildId":"$(Build.BuildId)","result":"Succeeded","track":"internal"}
+                EOF
+                TS=$(date +%s)
+                HEADERS=$(node scripts/sign-controller-request.mjs Laudium-post POST /builds/mobile-status $(Build.ArtifactStagingDirectory)/mobile-status-body.json $TS)
+                AUTH=$(echo "$HEADERS" | jq -r .Authorization)
+                TIMESTAMP=$(echo "$HEADERS" | jq -r '.["X-Timestamp"]')
+                curl -fsS -X POST -H "Authorization: $AUTH" -H "X-Timestamp: $TIMESTAMP" -H "X-Project-Id: Laudium-post" \
+                  -H "Content-Type: application/json" \
+                  --data-binary @$(Build.ArtifactStagingDirectory)/mobile-status-body.json \
+                  "$(TEST_ENV_CONTROLLER_URL)/builds/mobile-status" || true

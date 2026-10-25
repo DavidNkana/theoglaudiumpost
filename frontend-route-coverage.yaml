@@ -1,0 +1,337 @@
+routes:
+  - path: /
+    authCases:
+      - name: anonymous
+        auth: anonymous
+        expectedStatus: 200
+  - path: news
+    authCases:
+      - name: anonymous
+        auth: anonymous
+        expectedStatus: 200
+  - path: archive
+    authCases:
+      - name: anonymous
+        auth: anonymous
+        expectedStatus: 200
+  - path: ':slug'
+    authCases:
+      - name: anonymous
+        auth: anonymous
+        expectedStatus: 200
+    params:
+      slug: sample
+  - path: categories/:slug
+    authCases:
+      - name: anonymous
+        auth: anonymous
+        expectedStatus: 200
+    params:
+      slug: sample
+  - path: tags/:slug
+    authCases:
+      - name: anonymous
+        auth: anonymous
+        expectedStatus: 200
+    params:
+      slug: sample
+  - path: community
+    authCases:
+      - name: anonymous
+        auth: anonymous
+        expectedStatus: 200
+  - path: ':slug'
+    authCases:
+      - name: anonymous
+        auth: anonymous
+        expectedStatus: 200
+    params:
+      slug: sample
+  - path: announcements
+    authCases:
+      - name: anonymous
+        auth: anonymous
+        expectedStatus: 200
+  - path: directory
+    authCases:
+      - name: anonymous
+        auth: anonymous
+        expectedStatus: 200
+  - path: ':slug'
+    authCases:
+      - name: anonymous
+        auth: anonymous
+        expectedStatus: 200
+    params:
+      slug: sample
+  - path: events
+    authCases:
+      - name: anonymous
+        auth: anonymous
+        expectedStatus: 200
+  - path: search
+    authCases:
+      - name: anonymous
+        auth: anonymous
+        expectedStatus: 200
+  - path: profile
+    authCases:
+      - name: anonymous
+        auth: anonymous
+        expectedStatus: 200
+  - path: terms-of-use
+    authCases:
+      - name: anonymous
+        auth: anonymous
+        expectedStatus: 200
+  - path: privacy-policy
+    authCases:
+      - name: anonymous
+        auth: anonymous
+        expectedStatus: 200
+  - path: about
+    authCases:
+      - name: anonymous
+        auth: anonymous
+        expectedStatus: 200
+  - path: editorial-policy
+    authCases:
+      - name: anonymous
+        auth: anonymous
+        expectedStatus: 200
+  - path: corrections
+    authCases:
+      - name: anonymous
+        auth: anonymous
+        expectedStatus: 200
+  - path: podcasts
+    authCases:
+      - name: anonymous
+        auth: anonymous
+        expectedStatus: 200
+  - path: /payment/success/:id
+    authCases:
+      - name: anonymous
+        auth: anonymous
+        expectedStatus: 200
+    params:
+      id: sample
+  - path: /payment/receipt/:id
+    authCases:
+      - name: anonymous
+        auth: anonymous
+        expectedStatus: 200
+    params:
+      id: sample
+  - path: /payment/cancel/:id
+    authCases:
+      - name: anonymous
+        auth: anonymous
+        expectedStatus: 200
+    params:
+      id: sample
+  - path: /project-documentation
+    authCases:
+      - name: anonymous
+        auth: anonymous
+        expectedStatus: 200
+  - path: /business
+    authCases:
+      - name: anonymous
+        auth: anonymous
+        expectedStatus: 200
+  - path: login
+    authCases:
+      - name: anonymous
+        auth: anonymous
+        expectedStatus: 200
+  - path: register
+    authCases:
+      - name: authenticated
+        auth: authenticated
+        expectedStatus: 200
+  - path: dashboard
+    authCases:
+      - name: authenticated
+        auth: authenticated
+        expectedStatus: 200
+  - path: campaigns
+    authCases:
+      - name: authenticated
+        auth: authenticated
+        expectedStatus: 200
+  - path: ads
+    authCases:
+      - name: authenticated
+        auth: authenticated
+        expectedStatus: 200
+  - path: advertise
+    authCases:
+      - name: authenticated
+        auth: authenticated
+        expectedStatus: 200
+  - path: payments
+    authCases:
+      - name: authenticated
+        auth: authenticated
+        expectedStatus: 200
+  - path: /admin/login
+    authCases:
+      - name: anonymous
+        auth: anonymous
+        expectedStatus: 200
+  - path: /admin/prompts
+    authCases:
+      - name: authenticated
+        auth: authenticated
+        expectedStatus: 200
+  - path: /admin
+    authCases:
+      - name: authenticated
+        auth: authenticated
+        expectedStatus: 200
+  - path: dashboard
+    authCases:
+      - name: authenticated
+        auth: authenticated
+        expectedStatus: 200
+  - path: articles
+    authCases:
+      - name: authenticated
+        auth: authenticated
+        expectedStatus: 200
+  - path: prompt
+    authCases:
+      - name: authenticated
+        auth: authenticated
+        expectedStatus: 200
+  - path: create
+    authCases:
+      - name: authenticated
+        auth: authenticated
+        expectedStatus: 200
+  - path: edit/:id
+    authCases:
+      - name: authenticated
+        auth: authenticated
+        expectedStatus: 200
+    params:
+      id: sample
+  - path: prompts
+    authCases:
+      - name: authenticated
+        auth: authenticated
+        expectedStatus: 200
+  - path: source-articles
+    authCases:
+      - name: authenticated
+        auth: authenticated
+        expectedStatus: 200
+  - path: ads
+    authCases:
+      - name: authenticated
+        auth: authenticated
+        expectedStatus: 200
+  - path: create
+    authCases:
+      - name: authenticated
+        auth: authenticated
+        expectedStatus: 200
+  - path: edit/:id
+    authCases:
+      - name: authenticated
+        auth: authenticated
+        expectedStatus: 200
+    params:
+      id: sample
+  - path: payments
+    authCases:
+      - name: authenticated
+        auth: authenticated
+        expectedStatus: 200
+  - path: campaigns
+    authCases:
+      - name: authenticated
+        auth: authenticated
+        expectedStatus: 200
+  - path: create
+    authCases:
+      - name: authenticated
+        auth: authenticated
+        expectedStatus: 200
+  - path: edit/:id
+    authCases:
+      - name: authenticated
+        auth: authenticated
+        expectedStatus: 200
+    params:
+      id: sample
+  - path: ad-placements
+    authCases:
+      - name: authenticated
+        auth: authenticated
+        expectedStatus: 200
+  - path: businesses
+    authCases:
+      - name: authenticated
+        auth: authenticated
+        expectedStatus: 200
+  - path: users
+    authCases:
+      - name: authenticated
+        auth: authenticated
+        expectedStatus: 200
+  - path: podcasts
+    authCases:
+      - name: anonymous
+        auth: anonymous
+        expectedStatus: 200
+  - path: announcements
+    authCases:
+      - name: anonymous
+        auth: anonymous
+        expectedStatus: 200
+  - path: create
+    authCases:
+      - name: authenticated
+        auth: authenticated
+        expectedStatus: 200
+  - path: edit/:id
+    authCases:
+      - name: authenticated
+        auth: authenticated
+        expectedStatus: 200
+    params:
+      id: sample
+  - path: categories
+    authCases:
+      - name: authenticated
+        auth: authenticated
+        expectedStatus: 200
+  - path: /403
+    authCases:
+      - name: authenticated
+        auth: authenticated
+        expectedStatus: 200
+  - path: /404
+    authCases:
+      - name: anonymous
+        auth: anonymous
+        expectedStatus: 200
+  - path: /:pathMatch(.*)*
+    authCases:
+      - name: anonymous
+        auth: anonymous
+        expectedStatus: 200
+    params:
+      pathMatch: sample
+  - path: /admin/login
+    authCases:
+      - name: anonymous
+        auth: anonymous
+        expectedStatus: 200
+  - path: /business/register
+    authCases:
+      - name: anonymous
+        auth: anonymous
+        expectedStatus: 200

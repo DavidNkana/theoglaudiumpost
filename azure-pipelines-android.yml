@@ -1,0 +1,78 @@
+# Android pipeline for the LaudiumBiz Capacitor app (com.laudiumbiz.laudiumbiz).
+# Builds a release AAB from the web app via Capacitor. The android/ project is
+# generated (not committed). Runs on a Microsoft-hosted ubuntu agent.
+#
+# ONE-TIME SETUP for a SIGNED release (Project Settings > Pipelines > Library):
+#   1. Variable group "laudium-android-signing" with:
+#        KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD
+#   2. Secure file "laudium-release.keystore" = your upload/signing keystore (.jks).
+# (Play Store upload is a separate stage — needs a Google Play service-account JSON
+#  + the Google Play Azure DevOps extension; left out until that's provisioned.)
+trigger:
+  branches:
+    include: [main]
+  paths:
+    include:
+      - src/
+      - capacitor.config.json
+      - package.json
+      - android/
+pool:
+  vmImage: 'ubuntu-latest'
+variables:
+  - group: laudium-android-signing
+stages:
+  - stage: android_build
+    displayName: 'Build Android release (AAB)'
+    jobs:
+      - job: build
+        timeoutInMinutes: 60
+        steps:
+          - task: NodeTool@0
+            displayName: 'Use Node 20'
+            inputs:
+              versionSpec: '20.x'
+          - task: JavaToolInstaller@0
+            displayName: 'Use JDK 17'
+            inputs:
+              versionSpec: '17'
+              jdkArchitectureOption: 'x64'
+              jdkSourceOption: 'PreInstalled'
+          - task: Bash@3
+            displayName: 'Build web + generate Capacitor Android project'
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                npm ci
+                npm run build
+                [ -d android ] || npx cap add android
+                npx cap sync android
+          - task: DownloadSecureFile@1
+            name: keystore
+            displayName: 'Download release keystore'
+            inputs:
+              secureFile: 'laudium-release.keystore'
+          - task: Bash@3
+            displayName: 'Gradle bundleRelease (signed AAB)'
+            env:
+              KEYSTORE_PATH: $(keystore.secureFilePath)
+              KEYSTORE_PASSWORD: $(KEYSTORE_PASSWORD)
+              KEY_ALIAS: $(KEY_ALIAS)
+              KEY_PASSWORD: $(KEY_PASSWORD)
+            inputs:
+              targetType: inline
+              workingDirectory: android
+              script: |
+                set -euo pipefail
+                chmod +x ./gradlew
+                ./gradlew bundleRelease \
+                  -Pandroid.injected.signing.store.file="$KEYSTORE_PATH" \
+                  -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
+                  -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
+                  -Pandroid.injected.signing.key.password="$KEY_PASSWORD"
+          - task: PublishPipelineArtifact@1
+            displayName: 'Publish AAB artifact'
+            inputs:
+              targetPath: android/app/build/outputs/bundle/release
+              artifact: android-aab

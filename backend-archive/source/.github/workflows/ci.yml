@@ -1,0 +1,24 @@
+name: CI
+
+# Quality gate (AGENTS Multi-Stack Quality Gate Contract — Java/Spring Boot).
+# Pinned to JDK 21 (the project's target) so JaCoCo/ArchUnit instrument the
+# correct bytecode. `mvn verify` runs unit tests, the ArchUnit architecture
+# gate, and the JaCoCo 100%-per-class coverage check. Any failing gate blocks.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - name: Verify (tests + architecture + coverage gate)
+        run: ./mvnw -B verify

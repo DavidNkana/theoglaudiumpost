@@ -1,0 +1,29 @@
+project: Laudium Biz App
+steps:
+  - Step 1:
+      description: |
+        Read and understand the "Laudium Biz App" project summary located at `docs/project_summary.md`.
+        This file provides a comprehensive overview of the Laudium Biz App, including its core purpose, architecture, features, and monetisation strategy.
+        Summarize this content and use it as the foundation for all further analysis and documentation of the project.
+        Note: All documentation files—excluding the actual project source code—will be organized under the `doc/` directory.
+
+  - Step 2:
+      description: |
+        Analyze the entire project structure to identify the tech stack (Vue 3, Spring Boot, MySQL, JWT, etc.), build tools, and development environment.
+        Document this structure in the `docs/tech_stack.yaml` or a similarly named file.
+        This documentation should include:
+          - Frameworks and libraries used (frontend/backend) and role in the system
+          - Configuration files and environment variable usage
+          - Folder structure and purpose of each directory
+
+  - Step 3:
+      description: |
+        Identify and document all core functions of the system, including article management, ad management, push notifications, search, analytics, and AI integrations.
+        For each function, provide complete documentation covering its purpose, workflows, routes, logic, and interaction with other parts of the system.
+        Save each module's documentation in the `docs/functions/` folder.
+
+  - Step 4:
+      description: |
+        For every core function, include technical metadata such as key file paths, routes, styling, permissions, security rules, data validation, and UI structure.
+        Highlight any use of service workers, notification logic, or AI endpoints.
+        Create structured YAML reference files for each module to serve as a developer- and AI-readable blueprint.

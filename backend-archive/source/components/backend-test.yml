@@ -1,0 +1,226 @@
+name: Laudium-post-backend-test
+trigger:
+  branches:
+    include: [develop, main]
+  paths:
+    include: [src/, api.yaml, scripts/, components/]
+pool:
+  vmImage: 'ubuntu-latest'
+variables:
+  - group: Laudium-post-test-vg
+  - name: COMPONENT
+    value: backend
+  - name: PR_ID
+    ${{ if eq(variables['Build.Reason'], 'PullRequest') }}:
+      value: $(System.PullRequest.PullRequestId)
+    ${{ else }}:
+      value: integration
+stages:
+  - stage: build
+    displayName: 'Build backend'
+    jobs:
+      - job: build
+        steps:
+          - task: Bash@3
+            displayName: 'Docker build and push to ACR'
+            condition: eq(variables['COMPONENT'], 'backend')
+            env:
+              ACR_PASSWORD: $(ACR_PASSWORD)
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                IMAGE="$(ACR_REGISTRY)/laudium-post-backend:$(Build.SourceVersion)"
+                echo "$ACR_PASSWORD" | docker login "$(ACR_REGISTRY)" -u "$(ACR_USERNAME)" --password-stdin
+                docker build -t "$IMAGE" -f Dockerfile .
+                docker push "$IMAGE"
+  - stage: deploy_to_test_env
+    displayName: 'Provision test env (PR $(PR_ID))'
+    dependsOn: build
+    jobs:
+      - deployment: provision
+        environment: Laudium-post-test-pr-preview
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - task: Bash@3
+                  displayName: 'Build provision body (DB + runtime env vars)'
+                  env:
+                    TEST_DATABASE_URL: $(TEST_DATABASE_URL)
+                    TEST_RUNTIME_ENV_VARS: $(TEST_RUNTIME_ENV_VARS)
+                  inputs:
+                    targetType: inline
+                    script: |
+                      set -euo pipefail
+                      export BUILD_IMAGE="acrlaudiumpost.azurecr.io/laudium-post-backend:$(Build.SourceVersion)"
+                      export TEST_CONTAINER_PORT=8080
+                      node scripts/build-test-provision-body.mjs --output $(Build.ArtifactStagingDirectory)/provision-body.json
+                - task: Bash@3
+                  displayName: 'POST /provision (Ed25519 signed, via scripts/sign-controller-request.mjs)'
+                  env:
+                    TEST_ENV_CONTROLLER_URL: $(TEST_ENV_CONTROLLER_URL)
+                    TEST_ED25519_PRIVATE_KEY_B64: $(TEST_ED25519_PRIVATE_KEY_B64)
+                  inputs:
+                    targetType: inline
+                    script: |
+                      set -euo pipefail
+                      TS=$(date +%s)
+                      HEADERS=$(node scripts/sign-controller-request.mjs Laudium-post POST /provision $(Build.ArtifactStagingDirectory)/provision-body.json $TS)
+                      AUTH=$(echo "$HEADERS" | jq -r .Authorization)
+                      TIMESTAMP=$(echo "$HEADERS" | jq -r '.["X-Timestamp"]')
+                      curl -fsS -X POST -H "Authorization: $AUTH" -H "X-Timestamp: $TIMESTAMP" -H "X-Project-Id: Laudium-post" \
+                        -H "Content-Type: application/json" \
+                        --data-binary @$(Build.ArtifactStagingDirectory)/provision-body.json \
+                        "$(TEST_ENV_CONTROLLER_URL)/provision" \
+                        | tee $(Build.ArtifactStagingDirectory)/provision.json
+                - task: Bash@3
+                  displayName: 'Publish backend preview metadata for frontend-test'
+                  inputs:
+                    targetType: inline
+                    script: |
+                      set -euo pipefail
+                      TEST_HOSTNAME=$(jq -r .hostname < $(Build.ArtifactStagingDirectory)/provision.json)
+                      TEST_CONTAINER_ID=$(jq -r .containerId < $(Build.ArtifactStagingDirectory)/provision.json)
+                      jq -n --arg hostname "$TEST_HOSTNAME" --arg url "https://$TEST_HOSTNAME" --arg containerId "$TEST_CONTAINER_ID" \
+                        '{hostname:$hostname,url:$url,containerId:$containerId}' \
+                        > $(Build.ArtifactStagingDirectory)/backend-preview.json
+                - task: PublishPipelineArtifact@1
+                  displayName: 'Publish provision + backend preview for downstream stages'
+                  inputs:
+                    targetPath: $(Build.ArtifactStagingDirectory)
+                    artifact: provision
+                    patterns: |
+                      provision.json
+                      backend-preview.json
+  - stage: smoke_test
+    displayName: 'D18: GET every endpoint, non-persistent PATCHes'
+    dependsOn: deploy_to_test_env
+    jobs:
+      - job: smoke
+        steps:
+          - download: current
+            artifact: provision
+          - task: Bash@3
+            displayName: 'Run D18 smoke test against test hostname'
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                TEST_HOSTNAME=$(jq -r .hostname < $(Pipeline.Workspace)/provision/provision.json)
+                BASE_URL="https://$TEST_HOSTNAME"
+                for i in $(seq 1 60); do
+                  if curl -k -fsS "$BASE_URL/laudium/actuator/health" >/dev/null; then
+                    echo "Backend healthy after ${i} attempt(s)"
+                    break
+                  fi
+                  sleep 5
+                done
+                curl -k -fsS "$BASE_URL/laudium/actuator/health" >/dev/null || { echo "Backend health check failed on $BASE_URL/laudium/actuator/health"; exit 1; }
+                node scripts/d18-smoke-test.mjs --base-url "$BASE_URL" --endpoints api-endpoints.json --insecure
+  - stage: api_yaml_test
+    displayName: '100% API surface coverage (api.yaml contract test, backend)'
+    dependsOn: smoke_test
+    jobs:
+      - job: contract_test
+        steps:
+          - download: current
+            artifact: provision
+          - task: NodeTool@0
+            inputs:
+              versionSpec: '20.x'
+          - task: Bash@3
+            displayName: 'Install pipeline script dependencies'
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                npm ci --prefix scripts
+          - task: Bash@3
+            displayName: 'Run api-coverage-check.mjs (deterministic 100% coverage)'
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                # Wrapper script writes a known JSON contract (Section 5h)
+                # Coverage gate: coverage == "100" (enforced by script + coverage-gate-validator)
+                TEST_HOSTNAME=$(jq -r .hostname < $(Pipeline.Workspace)/provision/provision.json)
+                node scripts/api-coverage-check.mjs api.yaml api-test-fixtures.yaml "https://$TEST_HOSTNAME" $(Build.ArtifactStagingDirectory)/api-coverage.json
+                COVERAGE=$(jq -r .coverage $(Build.ArtifactStagingDirectory)/api-coverage.json)
+                if [ "$COVERAGE" != "100" ]; then
+                  echo "##vso[task.logissue type=error]api coverage: $COVERAGE% (need 100%)"
+                  exit 1
+                fi
+          - task: PublishTestResults@2
+            condition: succeededOrFailed()
+            inputs:
+              testResultsFormat: JUnit
+              testResultsFiles: '$(Build.ArtifactStagingDirectory)/contract-junit.xml'
+          - task: PublishPipelineArtifact@1
+            displayName: 'Publish api-coverage.json for report stage'
+            inputs:
+              targetPath: $(Build.ArtifactStagingDirectory)/api-coverage.json
+              artifact: api-coverage
+  - stage: report
+    displayName: 'Post coverage + COMPONENT-VERIFIED to PR + Initiative'
+    dependsOn: [smoke_test, api_yaml_test]
+    condition: always()
+    jobs:
+      - job: report
+        steps:
+          - download: current
+            artifact: provision
+          - download: current
+            artifact: api-coverage
+          - task: Bash@3
+            displayName: 'Post PR comment with coverage report + COMPONENT-VERIFIED'
+            inputs:
+              targetType: inline
+              script: |
+                set -euo pipefail
+                coverage_api=$(jq -r .coverage $(Pipeline.Workspace)/api-coverage/api-coverage.json 2>/dev/null || echo 0)
+                cat <<EOF > $(Build.ArtifactStagingDirectory)/component-verified.md
+                COMPONENT-VERIFIED: Laudium-post-$(COMPONENT)-test
+                result: Succeeded
+                coverage:
+                  api: ${coverage_api}
+                artifacts:
+                  api-yaml-junit: $(System.CollectionUri)/$(System.TeamProject)/_build/results?buildId=$(Build.BuildId)
+                EOF
+          - task: PublishPipelineArtifact@1
+            displayName: 'Publish COMPONENT-VERIFIED evidence'
+            inputs:
+              targetPath: $(Build.ArtifactStagingDirectory)/component-verified.md
+              artifact: component-verified
+  - stage: teardown
+    displayName: 'DELETE /provision/{containerId}'
+    dependsOn: report
+    # Keep the shared main-branch integration env alive for frontend-test (nginx proxies /api to backend service).
+    condition: and(always(), ne(variables['PR_ID'], 'integration'))
+    jobs:
+      - deployment: teardown
+        environment: Laudium-post-test-pr-preview
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - download: current
+                  artifact: provision
+                - task: Bash@3
+                  displayName: 'DELETE /provision/{containerId} (Ed25519 signed)'
+                  env:
+                    TEST_ENV_CONTROLLER_URL: $(TEST_ENV_CONTROLLER_URL)
+                    TEST_ED25519_PRIVATE_KEY_B64: $(TEST_ED25519_PRIVATE_KEY_B64)
+                  inputs:
+                    targetType: inline
+                    script: |
+                      set -euo pipefail
+                      CONTAINER_ID=$(jq -r .containerId < $(Pipeline.Workspace)/provision/provision.json)
+                      TS=$(date +%s)
+                      HEADERS=$(node scripts/sign-controller-request.mjs Laudium-post DELETE /provision/$CONTAINER_ID "" $TS)
+                      AUTH=$(echo "$HEADERS" | jq -r .Authorization)
+                      TIMESTAMP=$(echo "$HEADERS" | jq -r '.["X-Timestamp"]')
+                      curl -fsS -X DELETE -H "Authorization: $AUTH" -H "X-Timestamp: $TIMESTAMP" -H "X-Project-Id: Laudium-post" \
+                        "$(TEST_ENV_CONTROLLER_URL)/provision/$CONTAINER_ID" || true

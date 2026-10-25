@@ -1,0 +1,10 @@
+{
+  "name": "pipeline-scripts",
+  "version": "1.0.0",
+  "description": "Deterministic pipeline scripts (signing, coverage, smoke test)",
+  "type": "module",
+  "dependencies": {
+    "@playwright/test": "1.45.0",
+    "js-yaml": "4.1.0"
+  }
+}

@@ -1,0 +1,2148 @@
+openapi: 3.0.0
+info:
+  title: Laudium Biz API
+  description: API documentation for Laudium Biz application
+  version: 1.0.0
+servers:
+  - url: /laudium/api/v1
+    description: Base API path
+tags:
+  - name: Authentication
+    description: Authentication operations - user signup, login, logout, token refresh, and validation
+  - name: Users
+    description: User management operations - retrieve authenticated user details
+  - name: Articles
+    description: Operations for managing articles including creation, retrieval, updating, and deletion of articles. The Article controller provides comprehensive functionality for article management with support for filtering, pagination, and scheduling.
+  - name: Categories
+    description: Category management operations - create, read, update, delete categories and retrieve articles by category
+  - name: Tags
+    description: Tag management operations - create, read, update, and delete tags for organizing content
+  - name: Media
+    description: Media management operations - upload images to Cloudinary, retrieve media with transformations, and convert existing media to Cloudinary format
+  - name: Businesses
+    description: Business management operations - create, read, update, delete businesses, and retrieve business-related ads, campaigns, and payments
+  - name: Ads
+    description: Ad management operations - create, read, update, delete advertisements, manage ad placements, track impressions and clicks
+  - name: Campaigns
+    description: Campaign management operations - create, read, update, delete advertising campaigns
+  - name: Ad Placements
+    description: Ad placement management operations - manage available advertising placement locations and their configurations
+  - name: Payments
+    description: Payment processing operations - create, read, update payments using PayFast or EFT, handle notifications and status updates
+  - name: Notices
+    description: Notice/announcement management operations - create, read, update, delete public notices and announcements with category support
+  - name: Dashboard
+    description: Dashboard analytics operations - retrieve statistics, metrics, and analytics data for articles, ads, and overall system performance
+  - name: Business Dashboard
+    description: Business-specific analytics operations - retrieve detailed analytics, spend data, and performance metrics for individual businesses
+  - name: Home
+    description: Home page and navigation operations - serve home page and redirect to Swagger UI documentation
+  - name: Perplexity
+    description: Operations for generating AI content using Perplexity API with Sonar model
+  - name: Gemini
+    description: Operations for generating AI content using Gemini 2.5 Pro API with GoogleSearch tool
+  - name: ChatGPT
+    description: Operations for generating AI content using ChatGPT via OpenAI Responses API with web search capability
+  - name: AI
+    description: Operations for generating AI content and managing prompts - generate articles, manage prompts, and create thumbnails using AI services
+  - name: SourceArticles
+    description: Operations for retrieving source articles from social media platforms using various AI providers
+
+paths:
+
+
+          
+
+  /auth/signup:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user
+      description: Creates a new user account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+                name:
+                  type: string
+              required:
+                - email
+                - password
+                - name
+      responses:
+        '200':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Invalid input
+        '500':
+          description: Server error
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Authenticate user
+      description: Authenticates a user with email and password and returns a JWT access token and refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                  description: User's email address
+                password:
+                  type: string
+                  format: password
+                  description: User's password
+              required:
+                - email
+                - password
+      responses:
+        '200':
+          description: Authentication successful - Returns JWT tokens
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Authentication failed - Invalid credentials
+        '500':
+          description: Server error
+
+  /auth/refresh-token:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh access token
+      description: Exchanges a valid refresh token for a new access token to maintain user session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken:
+                  type: string
+                  description: Valid refresh token
+              required:
+                - refreshToken
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid refresh token
+        '500':
+          description: Server error
+
+  /auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: Logout user
+      description: Invalidates the current user's session and refresh token
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logout successful
+        '401':
+          description: Unauthorized - Authentication required
+        '500':
+          description: Server error
+
+  /auth/validate-token:
+    get:
+      tags:
+        - Authentication
+      summary: Validate JWT token
+      description: Checks if the provided JWT token is valid and not expired
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Token is valid
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Token is valid"
+        '401':
+          description: Token is invalid or expired
+
+  /users/me:
+    get:
+      tags:
+        - Users
+      summary: Get authenticated user
+      description: Returns the currently authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server error
+
+  /articles:
+    post:
+      tags:
+        - Articles
+      summary: Get all articles
+      description: >
+        Returns a paginated list of articles with comprehensive filtering options. 
+        This endpoint uses a stored procedure to efficiently retrieve articles based on various criteria.
+        The response includes the articles along with pagination metadata.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ArticleQueryParams'
+            examples:
+              basic:
+                summary: Basic request
+                value: {
+                  "page": 0,
+                  "size": 10
+                }
+              withFilters:
+                summary: Request with filters
+                value: {
+                  "page": 0,
+                  "size": 10,
+                  "status": "published",
+                  "type": "featured",
+                  "category": 1,
+                  "search": "example",
+                  "startDate": "2023-01-01T00:00:00",
+                  "endDate": "2023-12-31T23:59:59"
+                }
+      responses:
+        '200':
+          description: List of articles with pagination metadata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  articles:
+                    type: array
+                    description: List of articles matching the query parameters
+                    items:
+                      $ref: '#/components/schemas/ArticleResponse'
+                  total:
+                    type: integer
+                    description: Total number of articles matching the query
+                  page:
+                    type: integer
+                    description: Current page number (zero-based)
+                  size:
+                    type: integer
+                    description: Number of articles per page
+                  totalPages:
+                    type: integer
+                    description: Total number of pages available
+        '500':
+          description: Server error
+
+  /articles/{id}:
+    get:
+      tags:
+        - Articles
+      summary: Get article by ID
+      description: >
+        Retrieves a specific article by its unique identifier. 
+        The response includes the complete article details including content, 
+        associated media (cover and thumbnail images), category information, and tags.
+        This endpoint uses virtual threads for efficient processing.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The unique identifier of the article to retrieve
+          schema:
+            type: string
+          example: "123"
+      responses:
+        '200':
+          description: Article details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArticleResponse'
+        '404':
+          description: Article not found - The specified article ID does not exist
+        '500':
+          description: Server error - An unexpected error occurred while processing the request
+    put:
+      tags:
+        - Articles
+      summary: Update article
+      description: >
+        Updates an existing article with the provided data. This endpoint handles updating all article properties
+        including title, content, summary, status, and associated media (cover and thumbnail images).
+        If images are provided, they will be updated or created as needed. The endpoint also manages
+        article tags by removing existing tags and adding the new ones specified in the request.
+        Authentication is required, and the authenticated user will be set as the article author.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The unique identifier of the article to update
+          schema:
+            type: integer
+          example: 123
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ArticleRequest'
+            example: {
+              "title": "Updated Article Title",
+              "slug": "updated-article-title",
+              "summary": "This is an updated summary",
+              "content": "<p>Updated article content</p>",
+              "coverImage": "base64EncodedImage...",
+              "thumbnailImage": "base64EncodedImage...",
+              "articleType": "featured",
+              "categoryId": 1,
+              "status": "published",
+              "archived": false,
+              "scheduledFor": "2023-12-31T12:00:00",
+              "tags": [1, 2, 3],
+              "notify": false
+            }
+      responses:
+        '201':
+          description: Article updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArticleResponse'
+        '400':
+          description: Invalid input - The request body contains invalid data
+        '404':
+          description: Article not found - The specified article ID does not exist
+        '500':
+          description: Server error - An unexpected error occurred while processing the request
+    delete:
+      tags:
+        - Articles
+      summary: Delete article
+      description: >
+        Performs a soft delete of an article by marking it as archived rather than removing it from the database.
+        This approach preserves the article's data while making it unavailable in regular article listings.
+        Authentication is required to perform this operation.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The unique identifier of the article to delete (archive)
+          schema:
+            type: integer
+          example: 123
+      responses:
+        '200':
+          description: Article deleted (archived) successfully
+          content:
+            application/json:
+              schema:
+                type: string
+              example: "Deleted Successfully"
+        '404':
+          description: Article not found - The specified article ID does not exist
+        '500':
+          description: Server error - An unexpected error occurred while processing the request
+
+  /articles/slug/{slug}:
+    get:
+      tags:
+        - Articles
+      summary: Get article by slug
+      description: >
+        Retrieves a specific article by its URL-friendly slug. This endpoint is particularly useful for 
+        public-facing applications where articles are accessed via their SEO-friendly URLs.
+        The response includes the complete article details including content, 
+        associated media (cover and thumbnail images), category information, and tags.
+        This endpoint uses virtual threads for efficient processing.
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          description: The URL-friendly slug of the article to retrieve
+          schema:
+            type: string
+          example: "my-article-title"
+      responses:
+        '200':
+          description: Article details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArticleResponse'
+        '404':
+          description: Article not found - The specified article slug does not exist
+        '500':
+          description: Server error - An unexpected error occurred while processing the request
+
+  /articles/create:
+    post:
+      tags:
+        - Articles
+      summary: Create article
+      description: >
+        Creates a new article with the provided data. This endpoint handles all aspects of article creation
+        including processing and storing associated media (cover and thumbnail images as base64 encoded strings),
+        setting the article status, scheduling publication, and associating tags.
+
+        Authentication is required, and the authenticated user will be set as the article author.
+
+        If the article is created with "published" status and the notify flag is set to true,
+        a notification will be sent to all users via OneSignal.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ArticleRequest'
+            example: {
+              "title": "New Article Title",
+              "slug": "new-article-title",
+              "summary": "This is a summary of the article",
+              "content": "<p>Article content with HTML formatting</p>",
+              "coverImage": "base64EncodedImage...",
+              "thumbnailImage": "base64EncodedImage...",
+              "articleType": "featured",
+              "categoryId": 1,
+              "status": "published",
+              "scheduledFor": "2023-12-31T12:00:00",
+              "tags": [1, 2, 3],
+              "notify": true
+            }
+      responses:
+        '201':
+          description: Article created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArticleResponse'
+        '400':
+          description: Invalid input - The request body contains invalid data
+        '401':
+          description: Unauthorized - Authentication is required
+        '500':
+          description: Server error - An unexpected error occurred while processing the request
+
+  /articles/stats:
+    get:
+      tags:
+        - Articles
+      summary: Get article statistics
+      description: >
+        Returns comprehensive statistics about articles in the system. This endpoint provides counts for
+        various article states including total articles, archived articles, published articles,
+        draft articles, scheduled articles, and upcoming articles.
+
+        This endpoint uses virtual threads for efficient processing and is useful for dashboard displays
+        and administrative overviews of content status.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Article statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_articles:
+                    type: integer
+                    description: Total number of articles in the system
+                  total_archived:
+                    type: integer
+                    description: Number of archived (soft-deleted) articles
+                  total_published:
+                    type: integer
+                    description: Number of published articles
+                  total_draft:
+                    type: integer
+                    description: Number of articles in draft status
+                  total_scheduled:
+                    type: integer
+                    description: Number of articles scheduled for future publication
+                  total_upcoming:
+                    type: integer
+                    description: Number of articles with a scheduled date in the future
+              example: {
+                "total_articles": 125,
+                "total_archived": 15,
+                "total_published": 80,
+                "total_draft": 20,
+                "total_scheduled": 10,
+                "total_upcoming": 8
+              }
+        '401':
+          description: Unauthorized - Authentication is required
+        '500':
+          description: Server error - An unexpected error occurred while processing the request
+
+  /articles/scheduled-today:
+    get:
+      tags:
+        - Articles
+      summary: Get articles scheduled for today
+      description: >
+        Retrieves all articles that are scheduled for publication today. This endpoint filters articles
+        based on their scheduled publication date, returning only those that are scheduled for the current day.
+
+        This endpoint is particularly useful for content management workflows where editors need to review
+        and potentially publish articles scheduled for the current day.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of articles scheduled for today retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ArticleResponse'
+              example: [
+                {
+                  "id": 123,
+                  "title": "Today's Scheduled Article",
+                  "slug": "todays-scheduled-article",
+                  "summary": "This article is scheduled for today",
+                  "status": "scheduled",
+                  "scheduled_for": "2023-12-25T12:00:00"
+                }
+              ]
+        '401':
+          description: Unauthorized - Authentication is required
+        '500':
+          description: Server error - An unexpected error occurred while processing the request
+
+  /articles/publish-scheduled:
+    put:
+      tags:
+        - Articles
+      summary: Publish scheduled articles
+      description: >
+        Publishes articles that are scheduled for publication. This endpoint provides several options for
+        selecting which scheduled articles to publish:
+
+        1. Publish specific articles by providing their IDs
+        2. Publish all scheduled articles by setting publishAll to true
+        3. Publish articles scheduled for today by setting publishToday to true
+        4. Publish articles scheduled within a date range by providing startDate and endDate
+
+        For each published article, the status is changed to "published" and the scheduled_for date
+        is updated to the current time.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublishRequestDTO'
+            examples:
+              specificArticles:
+                summary: Publish specific articles
+                value: {
+                  "articleIds": [123, 456, 789]
+                }
+              allArticles:
+                summary: Publish all scheduled articles
+                value: {
+                  "publishAll": true
+                }
+              todayArticles:
+                summary: Publish articles scheduled for today
+                value: {
+                  "publishToday": true
+                }
+              dateRangeArticles:
+                summary: Publish articles in date range
+                value: {
+                  "startDate": "2023-12-01",
+                  "endDate": "2023-12-31"
+                }
+      responses:
+        '200':
+          description: Articles published successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  updated:
+                    type: integer
+                    description: Number of articles that were updated to published status
+              example: {
+                "updated": 5
+              }
+        '401':
+          description: Unauthorized - Authentication is required
+        '500':
+          description: Server error - An unexpected error occurred while processing the request
+
+  /articles/simulate-load:
+    post:
+      tags:
+        - Articles
+      summary: Simulate load (Test endpoint)
+      description: >
+        Test endpoint that simulates a workload by sleeping for 2 seconds before responding.
+        This endpoint is useful for testing virtual thread performance and behavior.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Load simulation completed
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: "Handled by: VirtualThread-1"
+        '500':
+          description: Server error - An unexpected error occurred while processing the request
+
+  /articles/test-notifcation:
+    get:
+      tags:
+        - Articles
+      summary: Test notification (Test endpoint)
+      description: >
+        Test endpoint that sends a test notification to all users via OneSignal.
+        This endpoint is useful for testing the notification system.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Notification sent successfully
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: "Sent"
+        '500':
+          description: Server error - An unexpected error occurred while processing the request
+
+  /articles/test-sp:
+    get:
+      tags:
+        - Articles
+      summary: Test stored procedure (Test endpoint)
+      description: >
+        Test endpoint that executes the get_articles stored procedure with the provided parameters.
+        This endpoint is useful for testing the stored procedure functionality directly.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: Page number (zero-based)
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          description: Number of items per page
+          schema:
+            type: integer
+            default: 10
+        - name: search
+          in: query
+          description: Search term to filter articles
+          schema:
+            type: string
+        - name: category
+          in: query
+          description: Category ID to filter articles
+          schema:
+            type: integer
+        - name: status
+          in: query
+          description: Status to filter articles (published, draft, scheduled)
+          schema:
+            type: string
+        - name: type
+          in: query
+          description: Article type to filter articles (featured, popular, top)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Stored procedure executed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  articles:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ArticleResponse'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  size:
+                    type: integer
+                  totalPages:
+                    type: integer
+        '500':
+          description: Server error - An unexpected error occurred while processing the request
+
+  /categories:
+    get:
+      tags:
+        - Categories
+      summary: Get all categories
+      description: Returns a list of all categories
+      responses:
+        '200':
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+        '500':
+          description: Server error
+    post:
+      tags:
+        - Categories
+      summary: Create category
+      description: Creates a new category
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryOrTagRequest'
+      responses:
+        '201':
+          description: Category created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '400':
+          description: Invalid input
+        '500':
+          description: Server error
+
+  /categories/{id}:
+    put:
+      tags:
+        - Categories
+      summary: Update category
+      description: Updates an existing category
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryOrTagRequest'
+      responses:
+        '201':
+          description: Category updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '400':
+          description: Invalid input
+        '404':
+          description: Category not found
+        '500':
+          description: Server error
+    delete:
+      tags:
+        - Categories
+      summary: Delete category
+      description: Marks a category as deleted (soft delete)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Category deleted successfully
+        '404':
+          description: Category not found
+        '500':
+          description: Server error
+
+  /categories/{slug}/articles:
+    get:
+      tags:
+        - Categories
+      summary: Get articles by category
+      description: Returns articles for a specific category
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '201':
+          description: List of articles for the category
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  category:
+                    $ref: '#/components/schemas/Category'
+                  articles:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ArticleResponse'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  size:
+                    type: integer
+                  totalPages:
+                    type: integer
+        '500':
+          description: Server error
+
+  /businesses:
+    get:
+      tags:
+        - Businesses
+      summary: Get all businesses
+      description: Returns a list of all businesses with filtering and pagination
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of businesses
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  businesses:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Business'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  size:
+                    type: integer
+                  totalPages:
+                    type: integer
+        '500':
+          description: Server error
+
+  /businesses/{id}:
+    get:
+      tags:
+        - Businesses
+      summary: Get business by ID
+      description: Returns a business by its ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Business details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Business'
+        '404':
+          description: Business not found
+        '500':
+          description: Server error
+    put:
+      tags:
+        - Businesses
+      summary: Update business
+      description: Updates an existing business
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusinessDTO'
+      responses:
+        '200':
+          description: Business updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Business'
+        '400':
+          description: Invalid input
+        '404':
+          description: Business not found
+        '500':
+          description: Server error
+    delete:
+      tags:
+        - Businesses
+      summary: Delete business
+      description: Marks a business as deleted (soft delete)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Business deleted successfully
+        '404':
+          description: Business not found
+        '500':
+          description: Server error
+
+  /businesses/create:
+    post:
+      tags:
+        - Businesses
+      summary: Create business
+      description: Creates a new business
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusinessDTO'
+      responses:
+        '201':
+          description: Business created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Business'
+        '400':
+          description: Invalid input
+        '500':
+          description: Server error
+
+  /businesses/ads:
+    get:
+      tags:
+        - Businesses
+      summary: Get ads for authenticated business
+      description: Returns ads for the authenticated business
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of ads for the business
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ad'
+        '404':
+          description: Business not found
+        '500':
+          description: Server error
+
+  /businesses/campaigns:
+    get:
+      tags:
+        - Businesses
+      summary: Get campaigns for authenticated business
+      description: Returns campaigns for the authenticated business
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of campaigns for the business
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Campaign'
+        '404':
+          description: Business not found
+        '500':
+          description: Server error
+          
+          
+          
+          
+          
+          
+
+
+
+          
+          
+          
+          
+          
+          
+          
+          
+          
+
+
+
+          
+
+  /ai/generate-article:
+    post:
+      tags:
+        - AI
+      summary: Generate an article using AI
+      description: >
+        Endpoint to generate an article using AI.
+        This endpoint takes a prompt as input and returns a generated article.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PromptRequest'
+            example: {
+              "prompt": "Write an article about artificial intelligence"
+            }
+      responses:
+        '200':
+          description: Generated article
+          content:
+            text/plain:
+              schema:
+                type: string
+        '500':
+          description: Server error - An unexpected error occurred while processing the request
+
+  /ai/prompts:
+    get:
+      tags:
+        - AI
+      summary: Get all prompts
+      description: >
+        Retrieves all available prompts.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of prompts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Prompt'
+        '500':
+          description: Server error - An unexpected error occurred while processing the request
+    post:
+      tags:
+        - AI
+      summary: Create a new prompt
+      description: >
+        Creates a new prompt with the provided details.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PromptDTO'
+      responses:
+        '201':
+          description: Prompt created successfully
+          content:
+            text/plain:
+              schema:
+                type: string
+        '400':
+          description: Invalid input - The request body contains invalid data
+        '500':
+          description: Server error - An unexpected error occurred while processing the request
+
+  /ai/prompts/{name}:
+    get:
+      tags:
+        - AI
+      summary: Get prompt by name
+      description: >
+        Retrieves a specific prompt by its name.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          description: The name of the prompt
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Prompt details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prompt'
+        '404':
+          description: Prompt not found
+        '500':
+          description: Server error - An unexpected error occurred while processing the request
+
+  /ai/prompts/{id}:
+    put:
+      tags:
+        - AI
+      summary: Update a prompt
+      description: >
+        Updates an existing prompt with the provided details.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: The ID of the prompt to update
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PromptDTO'
+      responses:
+        '200':
+          description: Prompt updated successfully
+          content:
+            text/plain:
+              schema:
+                type: string
+        '400':
+          description: Invalid input - The request body contains invalid data
+        '404':
+          description: Prompt not found
+        '500':
+          description: Server error - An unexpected error occurred while processing the request
+    delete:
+      tags:
+        - AI
+      summary: Deactivate a prompt
+      description: >
+        Deactivates an existing prompt by setting its active status to false.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: The ID of the prompt to deactivate
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Prompt deactivated successfully
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: Prompt not found
+        '500':
+          description: Server error - An unexpected error occurred while processing the request
+
+  /ai/articles/generate-thumbnail:
+    post:
+      tags:
+        - AI
+      summary: Generate a thumbnail for an article
+      description: >
+        Generates a thumbnail image for an article based on the provided prompt.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ThumbnailRequest'
+            example: {
+              "prompt": "A futuristic city skyline",
+              "model": "dall-e-3",
+              "n": 1
+            }
+      responses:
+        '200':
+          description: Generated thumbnail image
+          content:
+            text/plain:
+              schema:
+                type: string
+        '500':
+          description: Server error - An unexpected error occurred while processing the request
+
+  /api/v1/gemini/generate-article:
+    post:
+      tags:
+        - Gemini
+      summary: Generate an article using Gemini API (v1)
+      description: >
+        Endpoint to generate an article using Gemini API with GoogleSearch tool.
+        This endpoint takes a prompt as input and returns a generated article.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PromptRequest'
+            example: { "prompt": "Write an article about sustainable urban development in Laudium" }
+      responses:
+        '200':
+          description: Generated article
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArticleGenerated'
+        '500':
+          description: Server error - An unexpected error occurred while processing the request
+
+  /api/v1/gemini/sourceArticles/all:
+    get:
+      tags:
+        - Gemini
+      summary: Get source articles (all) using Gemini API (v1)
+      description: Retrieves source articles using Gemini provider without parameters.
+      responses:
+        '200':
+          description: Source articles retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourceArticleResponse'
+        '500':
+          description: Server error - An unexpected error occurred while processing the request
+
+  /api/v1/gemini/generate-article/by-id:
+    post:
+      tags:
+        - Gemini
+      summary: Generate an article by SourceArticles ID (Gemini)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ArticleByIdRequest'
+      responses:
+        '200':
+          description: Article draft created from source ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerateByIdResponse'
+        '500':
+          description: Server error - An unexpected error occurred while processing the request
+
+  /api/v1/gemini/generate-articles/bulk:
+    post:
+      tags:
+        - Gemini
+      summary: Bulk create articles by SourceArticles IDs (Gemini)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkArticleByIdsRequest'
+      responses:
+        '202':
+          description: Accepted for processing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessingAcceptedResponse'
+              example:
+                status: processing
+                totalRequested: 3
+                ids: [1, 2, 3]
+        '500':
+          description: Server error - An unexpected error occurred while processing the request
+
+  /api/v1/perplexity/generate-article:
+    post:
+      tags:
+        - Perplexity
+      summary: Generate an article using Perplexity API (v1)
+      description: >
+        Endpoint to generate an article using Perplexity API with Sonar model.
+        This endpoint takes a prompt as input and returns a generated article.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PromptRequest'
+            example: { "prompt": "Write an article about community events in Laudium" }
+      responses:
+        '200':
+          description: Generated article
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArticleGenerated'
+        '500':
+          description: Server error - An unexpected error occurred while processing the request
+
+  /api/v1/perplexity/sourceArticles/all:
+    get:
+      tags:
+        - Perplexity
+      summary: Get source articles (all) using Perplexity API (v1)
+      description: Retrieves source articles using Perplexity provider without parameters.
+      responses:
+        '200':
+          description: Source articles retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourceArticleResponse'
+        '500':
+          description: Server error - An unexpected error occurred while processing the request
+
+  /api/v1/perplexity/generate-article/by-id:
+    post:
+      tags:
+        - Perplexity
+      summary: Generate an article by SourceArticles ID (Perplexity)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ArticleByIdRequest'
+      responses:
+        '200':
+          description: Article draft created from source ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerateByIdResponse'
+        '500':
+          description: Server error - An unexpected error occurred while processing the request
+
+  /api/v1/perplexity/generate-articles/bulk:
+    post:
+      tags:
+        - Perplexity
+      summary: Bulk create articles by SourceArticles IDs (Perplexity)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkArticleByIdsRequest'
+      responses:
+        '202':
+          description: Accepted for processing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessingAcceptedResponse'
+              example:
+                status: processing
+                totalRequested: 3
+                ids: [1, 2, 3]
+        '500':
+          description: Server error - An unexpected error occurred while processing the request
+
+  /api/v1/chatgpt/generate-article:
+    post:
+      tags:
+        - ChatGPT
+      summary: Generate an article using ChatGPT (OpenAI)
+      description: >
+        Endpoint to generate an article using ChatGPT via OpenAI API. Returns a structured article.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PromptRequest'
+            example: { "prompt": "Write an article about water outages affecting Laudium" }
+      responses:
+        '200':
+          description: Generated article
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArticleGenerated'
+        '500':
+          description: Server error - An unexpected error occurred while processing the request
+
+  /api/v1/chatgpt/sourceArticles/all:
+    get:
+      tags:
+        - ChatGPT
+      summary: Get source articles (all) using ChatGPT (OpenAI Responses API)
+      description: Retrieves source articles using ChatGPT Responses API with web_search tool and JSON schema output.
+      responses:
+        '200':
+          description: Source articles retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourceArticleResponse'
+        '500':
+          description: Server error - An unexpected error occurred while processing the request
+
+  /api/v1/chatgpt/generate-article/by-id:
+    post:
+      tags:
+        - ChatGPT
+      summary: Generate an article by SourceArticles ID (ChatGPT)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ArticleByIdRequest'
+      responses:
+        '200':
+          description: Article draft created from source ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerateByIdResponse'
+        '500':
+          description: Server error - An unexpected error occurred while processing the request
+
+  /api/v1/chatgpt/generate-articles/bulk:
+    post:
+      tags:
+        - ChatGPT
+      summary: Bulk create articles by SourceArticles IDs (ChatGPT)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkArticleByIdsRequest'
+      responses:
+        '202':
+          description: Accepted for processing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessingAcceptedResponse'
+              example:
+                status: processing
+                totalRequested: 3
+                ids: [1, 2, 3]
+        '500':
+          description: Server error - An unexpected error occurred while processing the request
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    SourceArticle:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Database ID of the persisted source article
+        url:
+          type: string
+          description: URL of the source article
+        platform:
+          type: string
+          description: Social media platform (e.g., facebook, twitter, instagram)
+        timestamp:
+          type: string
+          format: date-time
+          description: Timestamp of the post
+        author:
+          type: string
+          description: Author of the post
+        content:
+          type: string
+          description: Content of the post
+        shareCount:
+          type: integer
+          description: Number of shares
+        commentCount:
+          type: integer
+          description: Number of comments
+        hashtags:
+          type: array
+          items:
+            type: string
+          description: Hashtags used in the post
+        additionalData:
+          type: object
+          additionalProperties: true
+          description: Additional platform-specific data
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role_id:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        expiresIn:
+          type: integer
+          description: Token expiration time in seconds
+
+    ArticleRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        slug:
+          type: string
+        summary:
+          type: string
+        content:
+          type: string
+        coverImage:
+          type: string
+          description: Base64 encoded image
+        thumbnailImage:
+          type: string
+          description: Base64 encoded image
+        articleType:
+          type: string
+          enum: [featured, popular, top]
+        categoryId:
+          type: integer
+        status:
+          type: string
+          enum: [draft, published, scheduled]
+        authorId:
+          type: string
+        archived:
+          type: boolean
+        scheduledFor:
+          type: string
+          format: date-time
+        tags:
+          type: array
+          items:
+            type: integer
+        notify:
+          type: boolean
+
+    ArticleResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        slug:
+          type: string
+        summary:
+          type: string
+        content:
+          type: string
+        article_type:
+          type: string
+        author:
+          type: string
+        status:
+          type: string
+        archived:
+          type: boolean
+        cover:
+          type: object
+          properties:
+            file:
+              type: string
+        thumbnail:
+          type: object
+          properties:
+            file:
+              type: string
+        category:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            slug:
+              type: string
+        category_id:
+          type: integer
+        cover_id:
+          type: integer
+        scheduled_for:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tag'
+
+    ArticleQueryParams:
+      type: object
+      properties:
+        page:
+          type: integer
+          default: 0
+        size:
+          type: integer
+          default: 10
+        search:
+          type: string
+        category:
+          type: integer
+        status:
+          type: string
+        type:
+          type: string
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        excludeIds:
+          type: array
+          items:
+            type: integer
+
+    PublishRequestDTO:
+      type: object
+      properties:
+        articleIds:
+          type: array
+          items:
+            type: integer
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        publishAll:
+          type: boolean
+        publishToday:
+          type: boolean
+
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        is_deleted:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CategoryOrTagRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        isDeleted:
+          type: boolean
+
+    Business:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        location:
+          type: string
+        user_id:
+          type: integer
+        is_deleted:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    BusinessDTO:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        phone:
+          type: string
+        location:
+          type: string
+        isDeleted:
+          type: boolean
+
+    Ad:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        image:
+          type: string
+        url:
+          type: string
+        campaign_id:
+          type: integer
+        status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Campaign:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        business_id:
+          type: integer
+        start_date:
+          type: string
+          format: date-time
+        end_date:
+          type: string
+          format: date-time
+        status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Tag:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+          
+    Prompt:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          description: The type of prompt (e.g., "system", "user")
+        name:
+          type: string
+          description: The name of the prompt (e.g., "DefaultArticlePrompt")
+        content:
+          type: string
+          description: The content of the prompt
+        active:
+          type: boolean
+          description: Whether the prompt is active
+          
+    PromptDTO:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        type:
+          type: string
+          description: The type of prompt (e.g., "system", "user")
+        name:
+          type: string
+          description: The name of the prompt (e.g., "DefaultArticlePrompt")
+        content:
+          type: string
+          description: The content of the prompt
+        active:
+          type: boolean
+          description: Whether the prompt is active
+          
+    PromptRequest:
+      type: object
+      properties:
+        prompt:
+          type: string
+          description: The prompt for text generation
+      required:
+        - prompt
+        
+    TopicRequest:
+      type: object
+      properties:
+        topic:
+          type: string
+          description: The topic for research or content generation
+      required:
+        - topic
+        
+    GeneratedArticleResponse:
+      type: object
+      properties:
+        title:
+          type: string
+          description: The title of the generated article
+        slug:
+          type: string
+          description: URL-friendly version of the title
+        article:
+          type: string
+          description: The main content of the generated article
+        summary:
+          type: string
+          description: A concise summary of the article
+      required:
+        - title
+        - slug
+        - article
+        - summary
+        
+    ThumbnailRequest:
+      type: object
+      properties:
+        prompt:
+          type: string
+          description: The prompt for thumbnail generation
+        model:
+          type: string
+          description: The model to use for image generation
+        n:
+          type: integer
+          description: Number of images to generate
+      required:
+        - prompt
+
+    ArticleGenerated:
+      type: object
+      properties:
+        title:
+          type: string
+        article:
+          type: string
+        summary:
+          type: string
+        slug:
+          type: string
+        sources:
+          type: array
+          items:
+            type: string
+      required:
+        - title
+        - article
+        - summary
+        - slug
+
+    SourceArticleResponse:
+      type: object
+      properties:
+        sourceArticles:
+          type: array
+          items:
+            $ref: '#/components/schemas/SourceArticle'
+        count:
+          type: integer
+        taskId:
+          type: integer
+        prompt:
+          type: string
+        fieldDescriptions:
+          type: object
+          additionalProperties:
+            type: string
+
+    ArticleByIdRequest:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: integer
+          format: int32
+          description: The SourceArticles ID to generate from
+
+    BulkArticleByIdsRequest:
+      type: object
+      required:
+        - ids
+      properties:
+        ids:
+          type: array
+          minItems: 1
+          items:
+            type: integer
+            format: int32
+          description: List of SourceArticles IDs
+        email:
+          type: string
+          format: email
+          description: Optional email address to notify when bulk processing completes
+
+    GenerateByIdResponse:
+      type: object
+      properties:
+        articleId:
+          type: integer
+          format: int32
+        slug:
+          type: string
+        title:
+          type: string
+        sourceId:
+          type: integer
+          format: int32
+        status:
+          type: string
+          description: draft | published | scheduled
+        coverMediaId:
+          type: integer
+          format: int32
+          nullable: true
+        coverUrl:
+          type: string
+          nullable: true
+
+    BulkResultItem:
+      type: object
+      properties:
+        sourceId:
+          type: integer
+          format: int32
+        ok:
+          type: boolean
+        articleId:
+          type: integer
+          format: int32
+          nullable: true
+        slug:
+          type: string
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        status:
+          type: string
+          nullable: true
+        coverMediaId:
+          type: integer
+          format: int32
+          nullable: true
+        coverUrl:
+          type: string
+          nullable: true
+        error:
+          type: string
+          nullable: true
+
+    BulkGenerateResponse:
+      type: object
+      properties:
+        totalRequested:
+          type: integer
+        totalSuccess:
+          type: integer
+        totalFailed:
+          type: integer
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/BulkResultItem'
+
+    ProcessingAcceptedResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          description: processing status
+        totalRequested:
+          type: integer
+        ids:
+          type: array
+          items:
+            type: integer
+            format: int32

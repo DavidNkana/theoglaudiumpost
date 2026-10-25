@@ -1,0 +1,6 @@
+{
+  "endpoints": [
+    { "method": "GET", "path": "/laudium/api/v1/articles/stats" },
+    { "method": "GET", "path": "/laudium/api/v1/categories" }
+  ]
+}

@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2732 2732" width="2732" height="2732">
+  <!--
+    SPLASH SCREEN - LIGHT MODE
+    ==========================
+
+    Background: #f5edd6 (warm cream)
+    Elements: #2c3e50 (dark blue-gray)
+  -->
+
+  <!-- Background -->
+  <rect width="2732" height="2732" fill="#f5edd6"/>
+
+  <!-- NEWSPAPER ICON (centered, scaled to fit well) -->
+  <g transform="translate(992.393, 866)">
+
+    <!-- Back paper layer -->
+    <rect x="56" y="72" width="988.856" height="1600" rx="80" ry="80"
+          fill="none" stroke="#2c3e50" stroke-width="36"/>
+
+    <!-- Main newspaper -->
+    <rect x="0" y="0" width="988.856" height="1600" rx="80" ry="80"
+          fill="#f5edd6" stroke="#2c3e50" stroke-width="36"/>
+
+    <!-- NEWS header -->
+    <text x="494.428" y="192"
+          font-family="Georgia, 'Times New Roman', serif"
+          font-size="160"
+          font-weight="700"
+          fill="#2c3e50"
+          text-anchor="middle"
+          letter-spacing="24">NEWS</text>
+
+    <!-- Header divider -->
+    <line x1="80" y1="256" x2="908.856" y2="256" stroke="#2c3e50" stroke-width="12"/>
+
+    <!-- Image block -->
+    <rect x="80" y="304" width="377.68" height="611.144" rx="24" ry="24" fill="#2c3e50"/>
+
+    <!-- Text lines -->
+    <line x1="505.68" y1="384" x2="908.856" y2="384" stroke="#2c3e50" stroke-width="28" stroke-linecap="round"/>
+    <line x1="505.68" y1="496" x2="908.856" y2="496" stroke="#2c3e50" stroke-width="28" stroke-linecap="round"/>
+    <line x1="505.68" y1="608" x2="908.856" y2="608" stroke="#2c3e50" stroke-width="28" stroke-linecap="round"/>
+    <line x1="505.68" y1="720" x2="760" y2="720" stroke="#2c3e50" stroke-width="28" stroke-linecap="round"/>
+    <line x1="505.68" y1="832" x2="908.856" y2="832" stroke="#2c3e50" stroke-width="28" stroke-linecap="round"/>
+
+    <!-- Bottom content -->
+    <line x1="80" y1="1040" x2="908.856" y2="1040" stroke="#2c3e50" stroke-width="28" stroke-linecap="round"/>
+    <line x1="80" y1="1184" x2="908.856" y2="1184" stroke="#2c3e50" stroke-width="28" stroke-linecap="round"/>
+    <line x1="80" y1="1328" x2="908.856" y2="1328" stroke="#2c3e50" stroke-width="28" stroke-linecap="round"/>
+    <line x1="80" y1="1472" x2="544" y2="1472" stroke="#2c3e50" stroke-width="28" stroke-linecap="round"/>
+
+  </g>
+
+</svg>

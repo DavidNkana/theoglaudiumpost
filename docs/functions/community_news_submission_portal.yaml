@@ -1,0 +1,284 @@
+# Community News Submission Portal - Technical Metadata
+
+## Feature Overview
+name: "Community News Submission Portal"
+description: "Enables community members to submit news, events, and notices for publication on the Laudium Biz platform."
+status: "Implemented"
+
+## Key Files
+files:
+  views:
+    - path: "src/views/Notices/Index.vue"
+      purpose: "Main page for viewing community notices"
+    - path: "src/views/Notices/Notice.vue"
+      purpose: "Detailed view of a single notice"
+    - path: "src/views/Events/Events.vue"
+      purpose: "Page for viewing community events"
+    - path: "src/views/Admin/Announcements/Index.vue"
+      purpose: "Admin interface for managing community submissions"
+    - path: "src/views/Admin/Announcements/CreateOrEdit.vue"
+      purpose: "Admin interface for creating or editing announcements"
+    - path: "src/views/Admin/Announcements/Categories.vue"
+      purpose: "Admin interface for managing announcement categories"
+  
+  services:
+    - path: "src/services/announcements.js"
+      purpose: "API service for announcement CRUD operations"
+  
+  components:
+    - path: "src/components/SubmissionForm.vue"
+      purpose: "Form for community members to submit content"
+    - path: "src/components/ImageUploader.vue"
+      purpose: "Component for uploading images with submissions"
+
+## Routes
+routes:
+  - path: "/notices"
+    name: "notices"
+    component: "src/views/Notices/Index.vue"
+    meta: 
+      title: "Community News"
+  
+  - path: "/notices/:slug"
+    name: "Notice"
+    component: "src/views/Notices/Notice.vue"
+    meta:
+      title: "Notice"
+  
+  - path: "/events"
+    name: "Events"
+    component: "src/views/Events/Events.vue"
+    meta:
+      title: "Community Events"
+  
+  - path: "/admin/announcements"
+    name: "Announcements Management"
+    component: "src/views/Admin/Announcements/Index.vue"
+    meta:
+      title: "Manage Announcements"
+      requiresAuth: true
+  
+  - path: "/admin/announcements/create"
+    name: "CreateAnnouncement"
+    component: "src/views/Admin/Announcements/CreateOrEdit.vue"
+    meta:
+      title: "Create Announcement"
+      requiresAuth: true
+  
+  - path: "/admin/announcements/edit/:id"
+    name: "EditAnnouncement"
+    component: "src/views/Admin/Announcements/CreateOrEdit.vue"
+    meta:
+      title: "Edit Announcement"
+      requiresAuth: true
+  
+  - path: "/admin/announcements/categories"
+    name: "AnnouncementsCategories"
+    component: "src/views/Admin/Announcements/Categories.vue"
+    meta:
+      title: "Manage Categories"
+      requiresAuth: true
+
+## Core Functions
+functions:
+  - name: "submitAnnouncement"
+    location: "src/components/SubmissionForm.vue"
+    purpose: "Submits a community announcement for moderation"
+    parameters: []
+    returns: "void"
+    
+  - name: "fetchAnnouncements"
+    location: "src/views/Notices/Index.vue"
+    purpose: "Fetches approved community announcements for display"
+    parameters: 
+      - name: "filters"
+        type: "object"
+        description: "Optional filters for category, search term, etc."
+    returns: "void"
+    
+  - name: "fetchAnnouncementDetails"
+    location: "src/views/Notices/Notice.vue"
+    purpose: "Fetches details of a specific announcement"
+    parameters:
+      - name: "slug"
+        type: "string"
+        description: "Announcement slug"
+    returns: "void"
+    
+  - name: "approveAnnouncement"
+    location: "src/views/Admin/Announcements/Index.vue"
+    purpose: "Approves a community submission for publication"
+    parameters:
+      - name: "id"
+        type: "number"
+        description: "Announcement ID"
+    returns: "void"
+    
+  - name: "rejectAnnouncement"
+    location: "src/views/Admin/Announcements/Index.vue"
+    purpose: "Rejects a community submission"
+    parameters:
+      - name: "id"
+        type: "number"
+        description: "Announcement ID"
+      - name: "reason"
+        type: "string"
+        description: "Reason for rejection"
+    returns: "void"
+    
+  - name: "saveAnnouncement"
+    location: "src/views/Admin/Announcements/CreateOrEdit.vue"
+    purpose: "Creates or updates an announcement"
+    parameters: []
+    returns: "void"
+    
+  - name: "fetchEvents"
+    location: "src/views/Events/Events.vue"
+    purpose: "Fetches community events for display"
+    parameters: 
+      - name: "filters"
+        type: "object"
+        description: "Optional filters for date range, category, etc."
+    returns: "void"
+
+## Workflow
+workflow:
+  - step: "Community member navigates to submission form"
+    component: "src/components/SubmissionForm.vue"
+    
+  - step: "User selects submission type (notice, event, etc.)"
+    component: "src/components/SubmissionForm.vue"
+    description: "Different form fields are shown based on submission type"
+    
+  - step: "User fills out submission details"
+    component: "src/components/SubmissionForm.vue"
+    description: "User enters title, description, date (for events), contact info, etc."
+    
+  - step: "User uploads images (optional)"
+    component: "src/components/ImageUploader.vue"
+    description: "User can upload images to accompany their submission"
+    
+  - step: "User submits the form"
+    function: "submitAnnouncement"
+    description: "Submission is sent to the backend with 'pending' status"
+    
+  - step: "Admin reviews submissions"
+    component: "src/views/Admin/Announcements/Index.vue"
+    description: "Admin sees list of pending submissions for review"
+    
+  - step: "Admin approves or rejects submission"
+    function: "approveAnnouncement or rejectAnnouncement"
+    description: "Admin can approve for immediate publication or reject with reason"
+    
+  - step: "Admin can edit submission if needed"
+    component: "src/views/Admin/Announcements/CreateOrEdit.vue"
+    description: "Admin can make changes before approving"
+    
+  - step: "Approved submissions appear on public pages"
+    component: "src/views/Notices/Index.vue or src/views/Events/Events.vue"
+    description: "Published submissions are visible to all users"
+    
+  - step: "Users can view detailed submission"
+    component: "src/views/Notices/Notice.vue"
+    description: "Users can click to see full details of a submission"
+
+## UI Components
+components:
+  - name: "SubmissionForm"
+    purpose: "Form for community members to submit content"
+    location: "src/components/SubmissionForm.vue"
+    
+  - name: "ImageUploader"
+    purpose: "Component for uploading images with submissions"
+    location: "src/components/ImageUploader.vue"
+    
+  - name: "NoticeCard"
+    purpose: "Card component for displaying notice previews"
+    location: "src/components/NoticeCard.vue"
+    
+  - name: "EventCard"
+    purpose: "Card component for displaying event previews"
+    location: "src/components/EventCard.vue"
+    
+  - name: "CategoryFilter"
+    purpose: "Filter component for filtering by category"
+    location: "src/components/CategoryFilter.vue"
+    
+  - name: "DateRangePicker"
+    purpose: "Component for selecting date ranges for events"
+    location: "src/components/DateRangePicker.vue"
+
+## External Integrations
+integrations:
+  - name: "Backend API"
+    purpose: "Stores and retrieves community submissions"
+    endpoints:
+      - "/announcements"
+      - "/announcements/create"
+      - "/announcements/:id"
+      - "/announcements/approve/:id"
+      - "/announcements/reject/:id"
+      - "/announcements/categories"
+      - "/events"
+      - "/events/:id"
+
+## Permissions
+permissions:
+  - role: "guest"
+    actions: ["read", "create"]
+    restrictions: "Can view published submissions and create new submissions"
+    
+  - role: "admin"
+    actions: ["create", "read", "update", "delete", "approve", "reject"]
+    restrictions: "Full control over all submissions"
+    
+  - role: "moderator"
+    actions: ["read", "update", "approve", "reject"]
+    restrictions: "Can review and moderate submissions but not delete them"
+
+## Data Validation
+validation:
+  - field: "title"
+    rules: ["required", "max:100"]
+    
+  - field: "description"
+    rules: ["required", "max:2000"]
+    
+  - field: "category"
+    rules: ["required"]
+    
+  - field: "contactName"
+    rules: ["required"]
+    
+  - field: "contactEmail"
+    rules: ["required", "email"]
+    
+  - field: "eventDate"
+    rules: ["required_if:type,event", "date", "after:now"]
+    
+  - field: "eventLocation"
+    rules: ["required_if:type,event"]
+    
+  - field: "images"
+    rules: ["array", "max:5"]
+    
+  - field: "image"
+    rules: ["image", "max:5120"] # 5MB max
+
+## Submission Types
+types:
+  - type: "notice"
+    description: "General community announcement or notice"
+    required_fields: ["title", "description", "category", "contactName", "contactEmail"]
+    
+  - type: "event"
+    description: "Community event with date, time, and location"
+    required_fields: ["title", "description", "category", "contactName", "contactEmail", "eventDate", "eventLocation"]
+    
+  - type: "classified"
+    description: "Community classified ad (services, items for sale, etc.)"
+    required_fields: ["title", "description", "category", "contactName", "contactEmail", "price"]
+    
+  - type: "alert"
+    description: "Urgent community alert (power outages, water issues, etc.)"
+    required_fields: ["title", "description", "category", "contactName", "contactEmail"]

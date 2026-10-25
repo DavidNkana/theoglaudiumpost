@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2732 2732" width="2732" height="2732">
+  <rect width="2732" height="2732" fill="#f5edd6"/>
+  <svg x="616" y="902" width="1500" height="927" viewBox="0 0 647 400">
+    <!-- NEWSPAPER ICON -->
+    <g transform="translate(123.517, 52.786)">
+      <rect x="7" y="9" width="123.607" height="200" rx="10" ry="10" fill="none" stroke="#2c3e50" stroke-width="4.5"/>
+      <rect x="0" y="0" width="123.607" height="200" rx="10" ry="10" fill="#f5edd6" stroke="#2c3e50" stroke-width="4.5"/>
+      <text x="61.804" y="24" font-family="Georgia, 'Times New Roman', serif" font-size="20" font-weight="700" fill="#2c3e50" text-anchor="middle" letter-spacing="3">NEWS</text>
+      <line x1="10" y1="32" x2="113.607" y2="32" stroke="#2c3e50" stroke-width="1.5"/>
+      <rect x="10" y="38" width="47.210" height="76.393" rx="3" ry="3" fill="#2c3e50"/>
+      <line x1="63.210" y1="48" x2="113.607" y2="48" stroke="#2c3e50" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="63.210" y1="62" x2="113.607" y2="62" stroke="#2c3e50" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="63.210" y1="76" x2="113.607" y2="76" stroke="#2c3e50" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="63.210" y1="90" x2="95" y2="90" stroke="#2c3e50" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="63.210" y1="104" x2="113.607" y2="104" stroke="#2c3e50" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="10" y1="130" x2="113.607" y2="130" stroke="#2c3e50" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="10" y1="148" x2="113.607" y2="148" stroke="#2c3e50" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="10" y1="166" x2="113.607" y2="166" stroke="#2c3e50" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="10" y1="184" x2="68" y2="184" stroke="#2c3e50" stroke-width="3.5" stroke-linecap="round"/>
+    </g>
+    <!-- TEXT BLOCK -->
+    <g transform="translate(267.124, 0)">
+      <text y="175" fill="#2c3e50">
+        <tspan x="0" font-family="Georgia, 'Times New Roman', serif" font-size="62" font-weight="700" letter-spacing="1">Laudium</tspan>
+        <tspan dx="-4" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="62" font-weight="400"> </tspan>
+        <tspan dx="-4" font-family="Georgia, 'Times New Roman', serif" font-size="62" font-weight="700" letter-spacing="1">POST</tspan>
+      </text>
+    </g>
+  </svg>
+</svg>

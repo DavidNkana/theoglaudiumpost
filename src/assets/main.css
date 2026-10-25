@@ -1,0 +1,97 @@
+@import "./base.css";
+
+/* #app { */
+/*  max-width: 1280px;*/
+/*  margin: 0 auto;*/
+/*  padding: 2rem;*/
+/*  font-weight: normal;*/
+/*}*/
+
+a,
+.green {
+  text-decoration: none;
+  color: hsla(160, 100%, 37%, 1);
+  transition: 0.4s;
+  padding: 0px;
+}
+
+@media (hover: hover) {
+  a:hover {
+    background-color: hsla(160, 100%, 37%, 0.2);
+  }
+}
+
+@media (min-width: 1024px) {
+  body {
+    /*display: flex;*/
+    /*place-items: center;*/
+  }
+
+  #app {
+    /*display: grid;*/
+    /*grid-template-columns: 1fr 1fr;*/
+    /*padding: 0 2rem;*/
+  }
+}
+
+.nav-link:focus-visible {
+  outline: 0;
+  box-shadow: none !important;
+}
+
+.excerpt {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+body {
+  background-color: var(--background-color);
+  color: var(--secondary-color);
+  font-family: var(--font-primary);
+}
+
+.navbar {
+  background-color: var(--background-color);
+  border-bottom: 2px solid var(--accent-color);
+}
+
+/*.navbar-brand img {
+  height: 80px;  Smaller logo in navbar 
+}*/
+
+.btn-primary {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+  color: #000;
+}
+
+.btn-primary:hover {
+  background-color: #e6c200;
+  border-color: #e6c200;
+}
+
+.card {
+  background-color: var(--accent-color);
+  border: none;
+  border-radius: 0.5rem;
+}
+
+footer {
+  background-color: var(--highlight-color);
+  color: #fff;
+  padding: 1rem;
+  /* text-align: center; */
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 700;
+  color: var(--highlight-color);
+}
+
+a {
+  color: var(--primary-color);
+}
