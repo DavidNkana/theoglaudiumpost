@@ -1,4 +1,6 @@
 <script setup>
+import { computed } from "vue";
+import { useRoute } from "vue-router";
 import LatestNews from "./Partials/LatestNews.vue";
 import TopStories from "./Partials/TopStories.vue";
 import PopularStories from "./Partials/PopularStories.vue";
@@ -18,6 +20,14 @@ import NewspaperView from "@/views/Newspaper/NewspaperView.vue";
 import Tags from "@/views/Admin/Articles/Partials/Tags.vue";
 
 const {isMobile} = useMobile()
+const route = useRoute()
+
+// The home route ("/") and the /news listing share this view. On the front
+// page the lead slot is the main story, so it reads "Main Stories"; the /news
+// listing keeps the editorial "Top Stories" label.
+const topStoriesTitle = computed(() =>
+  route.name === "Home" ? "Main Stories" : "Top Stories"
+)
 </script>
 
 <template>
@@ -49,7 +59,7 @@ const {isMobile} = useMobile()
                 <div class="header-icon">
                   <i class="bi bi-lightning-charge-fill"></i>
                 </div>
-                <h2 class="section-title">Top Stories</h2>
+                <h2 class="section-title">{{ topStoriesTitle }}</h2>
                 <div class="header-line"></div>
               </div>
               <TopStories page="news" />

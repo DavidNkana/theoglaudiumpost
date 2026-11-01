@@ -10,6 +10,14 @@ vi.mock("@/composables/useMobile.js", () => ({
   useMobile: () => ({ isMobile: isMobileRef }),
 }));
 
+// News.vue reads route.name to decide between the home ("Main Stories") and the
+// /news listing ("Top Stories") heading. vi.hoisted keeps the mutable route
+// state available to the mock factory, which runs before module imports.
+const routeState = vi.hoisted(() => ({ name: "Home" }));
+vi.mock("vue-router", () => ({
+  useRoute: () => routeState,
+}));
+
 import News from "@/views/News/News.vue";
 import {
   HOME_BANNER,
@@ -73,6 +81,7 @@ const mountNews = () =>
 
 beforeEach(() => {
   isMobileRef.value = false;
+  routeState.name = "Home";
 });
 
 describe("News.vue", () => {
@@ -153,10 +162,28 @@ describe("News.vue", () => {
       const wrapper = mountNews();
       const text = wrapper.text();
 
-      expect(text).toContain("Top Stories");
+      expect(text).toContain("Main Stories");
       expect(text).toContain("Latest News");
       expect(text).toContain("Popular Stories");
       expect(text).toContain("Popular Tags");
+    });
+
+    it("labels the lead section Main Stories on the home route", () => {
+      routeState.name = "Home";
+      const wrapper = mountNews();
+
+      const title = wrapper.find("main.content-column .section-title");
+      expect(title.text()).toBe("Main Stories");
+      expect(wrapper.text()).not.toContain("Top Stories");
+    });
+
+    it("keeps the Top Stories label on the /news listing route", () => {
+      routeState.name = "news";
+      const wrapper = mountNews();
+
+      const title = wrapper.find("main.content-column .section-title");
+      expect(title.text()).toBe("Top Stories");
+      expect(wrapper.text()).not.toContain("Main Stories");
     });
   });
 });
