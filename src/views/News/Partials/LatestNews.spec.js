@@ -254,7 +254,7 @@ describe("LatestNews.vue", () => {
     await flushPromises();
 
     expect(getAds).toHaveBeenCalledWith(
-      expect.objectContaining({ placement: "news_articles", status: "active" }),
+      expect.objectContaining({ placement: "main_page_ad", status: "active" }),
     );
     expect(wrapper.findAllComponents(PinAdCardStub)).toHaveLength(0);
   });

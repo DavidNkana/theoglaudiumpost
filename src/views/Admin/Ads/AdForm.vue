@@ -12,6 +12,14 @@ import { getMediaDataUrl } from '@/features/media/MediaService';
 import Swal from 'sweetalert2';
 import dayjs from 'dayjs';
 
+/**
+ * The placement every administrator-entered ad is filed under.
+ *
+ * The admin ad form sells a single ad product ("Main Page Ad"), and the home
+ * article grid reads the ads filed under this placement.
+ */
+const MAIN_PAGE_AD_PLACEMENT = 'main_page_ad';
+
 // Props & Emits
 const props = defineProps({
   ad: {
@@ -88,17 +96,22 @@ const initializeForm = async () => {
       getTags()
     ]);
 
-    // Restrict to a single placement: "Main Page Add" with mobile aspect ratio and fixed price R900
+    // Restrict to a single placement: "Main Page Ad" with mobile aspect ratio
+    // and fixed price R900. The placement is looked up by name so the ad always
+    // lands on the placement the home grid reads, whatever order the list
+    // comes back in.
     const fetched = placementsRes.data || [];
-    const basePlacement = fetched.length > 0 ? fetched[0] : {
-      id: 'main_page_ad',
-      location: 'main_page_ad',
-      fee_type: 'FIXED',
-      billing_unit: 'DAY',
-    };
+    const basePlacement =
+      fetched.find((placement) => placement.name === MAIN_PAGE_AD_PLACEMENT) || {
+        id: MAIN_PAGE_AD_PLACEMENT,
+        location: MAIN_PAGE_AD_PLACEMENT,
+        fee_type: 'FIXED',
+        billing_unit: 'DAY',
+      };
     const mainPlacement = {
       ...basePlacement,
-      location: 'main_page_ad',
+      id: basePlacement.id || MAIN_PAGE_AD_PLACEMENT,
+      location: MAIN_PAGE_AD_PLACEMENT,
       name: 'Main Page Ad',
       aspect_ratio: '9:16',
       fee_type: 'FIXED',

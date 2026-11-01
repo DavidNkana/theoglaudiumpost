@@ -81,8 +81,9 @@ const globalStubs = {
 /* Default happy-path service responses.                                */
 /* ------------------------------------------------------------------ */
 const PLACEMENT = {
-  id: "p1",
-  location: "home_banner",
+  id: "main_page_ad",
+  name: "main_page_ad",
+  location: "main_page_ad",
   fee_type: "FIXED",
   billing_unit: "DAY",
 };
@@ -356,11 +357,11 @@ describe("AdForm.vue", () => {
     const wrapper = await mountForm();
     // Selects order: business(0), campaign(1), placement(2), payment status(3).
     const placementSelect = wrapper.findAll("select")[2];
-    // Select the rendered placement option (value = resolved placement id p1).
+    // Select the rendered placement option (value = the main page ad id).
     // setValue drives the v-model writer and the @change handler.
-    await placementSelect.setValue("p1");
+    await placementSelect.setValue("main_page_ad");
     await flushPromises();
-    expect(wrapper.vm.form.placementId).toBe("p1");
+    expect(wrapper.vm.form.placementId).toBe("main_page_ad");
   });
 
   it("onPlacementSelect is a no-op when the placement id is unknown", async () => {

@@ -34,7 +34,14 @@ const props = defineProps({
   },
 });
 
-const NEWS_ARTICLES_AD_PLACEMENT = "news_articles";
+/**
+ * The placement the home article grid reads.
+ *
+ * Every advertisement an administrator enters is filed under this placement
+ * (the admin ad form sells a single "Main Page Ad" product), so the grid and
+ * the admin dashboard always agree.
+ */
+const NEWS_ARTICLES_AD_PLACEMENT = "main_page_ad";
 const store = useStore();const {isMobile} = useMobile()
 const currentPage = ref(0);
 const isLoading = ref(false);
