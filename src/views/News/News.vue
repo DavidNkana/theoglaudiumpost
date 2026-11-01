@@ -49,7 +49,7 @@ const {isMobile} = useMobile()
                 <div class="header-icon">
                   <i class="bi bi-lightning-charge-fill"></i>
                 </div>
-                <h2 class="section-title">Top Stories</h2>
+                <h2 class="section-title">Top</h2>
                 <div class="header-line"></div>
               </div>
               <TopStories page="news" />
