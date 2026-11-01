@@ -187,18 +187,13 @@ describe("AdminLayout.vue", () => {
     expect(links[0].classes()).toContain("active");
   });
 
-  it("applies active classes for articles/source-articles/businesses (startsWith true)", () => {
+  it("applies active classes for articles/businesses (startsWith true)", () => {
     const wrapper = mountLayout({ routePath: "/admin/articles/123" });
     const dashboard = wrapper.findAll(".admin-sidebar .nav-link")[0];
     const articles = wrapper.findAll(".admin-sidebar .nav-link")[1];
     // Dashboard not active (=== false), Articles active (startsWith true).
     expect(dashboard.classes()).not.toContain("active");
     expect(articles.classes()).toContain("active");
-
-    const sources = mountLayout({ routePath: "/admin/source-articles/x" });
-    expect(sources.findAll(".admin-sidebar .nav-link")[2].classes()).toContain(
-      "active"
-    );
 
     const biz = mountLayout({ routePath: "/admin/businesses/9" });
     // Find the Businesses anchor by its label text.
@@ -227,21 +222,24 @@ describe("AdminLayout.vue", () => {
     );
   });
 
-  it("navigateTo fires for the Source Articles, Businesses and Users handlers", async () => {
+  it("navigateTo fires for the Businesses and Users handlers", async () => {
     const wrapper = mountLayout();
     const anchors = wrapper.findAll(".admin-sidebar a.nav-link");
-    const sourceLink = anchors.find((a) => a.text().includes("Source Articles"));
     const bizLink = anchors.find((a) => a.text().includes("Businesses"));
     const usersLink = anchors.find((a) => a.text().includes("Users"));
-
-    await sourceLink.trigger("click");
-    expect(pushMock).toHaveBeenCalledWith("/admin/source-articles");
 
     await bizLink.trigger("click");
     expect(pushMock).toHaveBeenCalledWith("/admin/businesses");
 
     await usersLink.trigger("click");
     expect(pushMock).toHaveBeenCalledWith("/admin/users");
+  });
+
+  it("has no Source Articles link in the admin navigation", () => {
+    const wrapper = mountLayout();
+    const anchors = wrapper.findAll(".admin-sidebar a.nav-link");
+
+    expect(anchors.some((a) => a.text().includes("Source Articles"))).toBe(false);
   });
 
   it("navigateTo logs a navigation error when router.push rejects", async () => {
