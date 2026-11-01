@@ -10,6 +10,7 @@
 
 import { vi } from "vitest";
 import { createQueryBuilder } from "./supabaseMock.js";
+import { withAliases, withAliasesAll } from "../../src/utils/rowAliases.js";
 
 const ok = (data) => ({ status: 200, data });
 const created = (data) => ({ status: 201, data });
@@ -84,6 +85,8 @@ export const buildSupabaseModule = (state) => {
     ok,
     created,
     rethrow,
+    withAliases,
+    withAliasesAll,
     publicMediaUrl: (path) => (path ? `https://cdn.test/${path}` : null),
     MEDIA_BUCKET: "public-media",
     getSession: vi.fn(async () => state.session ?? null),

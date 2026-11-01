@@ -9,7 +9,14 @@
  * Responses keep the axios-shaped `{ status, data }` contract the UI expects.
  */
 
-import { supabase, ok, created, rethrow } from "@/services/supabase.js";
+import {
+  supabase,
+  ok,
+  created,
+  rethrow,
+  withAliases,
+  withAliasesAll,
+} from "@/services/supabase.js";
 import { uploadDataUrl } from "@/features/media/MediaService.js";
 import { BaseService } from "@/shared/services/BaseService";
 
@@ -63,7 +70,7 @@ const withPlacement = async (ad) => {
  * component rotates through, `image_url` the primary creative.
  */
 const toAd = (ad) => ({
-  ...ad,
+  ...withAliases(ad),
   files: Array.isArray(ad.images) ? ad.images : ad.images ? [ad.images] : [],
   image_url: ad.image_url ?? (Array.isArray(ad.images) ? ad.images[0] : null) ?? null,
 });
@@ -293,7 +300,7 @@ export const getPlacements = async () => {
       .select("id, name, placement_info, status")
       .order("name");
     if (error) throw error;
-    return ok(data ?? []);
+    return ok(withAliasesAll(data ?? []));
   } catch (error) {
     return rethrow(error, "Failed to fetch placements");
   }
@@ -438,7 +445,7 @@ export const createCampaign = async (data) => {
       .select("id, name, business_id, status, payment_status, start_date, end_date, budget")
       .single();
     if (error) throw error;
-    return created(createdCampaign);
+    return created(withAliases(createdCampaign));
   } catch (error) {
     return rethrow(error, "Failed to create campaign");
   }
@@ -462,7 +469,7 @@ export const editCampaign = async (id, data) => {
       .select("id, name, business_id, status, payment_status, start_date, end_date, budget")
       .single();
     if (error) throw error;
-    return ok(updated);
+    return ok(withAliases(updated));
   } catch (error) {
     return rethrow(error, "Failed to update campaign");
   }

@@ -4,7 +4,14 @@
  * Community notices (announcements) data access, backed by Supabase.
  */
 
-import { supabase, ok, created, rethrow } from "@/services/supabase.js";
+import {
+  supabase,
+  ok,
+  created,
+  rethrow,
+  withAliases,
+  withAliasesAll,
+} from "@/services/supabase.js";
 import { BaseService } from "@/shared/services/BaseService";
 
 const NOTICE_COLUMNS =
@@ -56,7 +63,7 @@ export const getAnnouncements = async ({
     const total = count ?? data?.length ?? 0;
     const totalPages = Number(size) > 0 ? Math.ceil(total / Number(size)) : 0;
 
-    return ok({ announcements: data ?? [], total, totalPages });
+    return ok({ announcements: withAliasesAll(data ?? []), total, totalPages });
   } catch (error) {
     return rethrow(error, "Failed to fetch notices");
   }
@@ -83,7 +90,7 @@ export const getAnnouncementCategories = async () => {
       counts.set(row.category_id, (counts.get(row.category_id) ?? 0) + 1);
     });
 
-    const result = (categories ?? []).map((category) => ({
+    const result = withAliasesAll(categories ?? []).map((category) => ({
       ...category,
       count: counts.get(category.id) ?? 0,
     }));
@@ -129,7 +136,7 @@ export const editCategory = async (id, data) => {
       .select(CATEGORY_COLUMNS)
       .single();
     if (error) throw error;
-    return ok(updated);
+    return ok(withAliases(updated));
   } catch (error) {
     return rethrow(error, "Failed to update category");
   }
@@ -171,7 +178,7 @@ export const getAnnouncement = async (id) => {
       .eq("id", id)
       .maybeSingle();
     if (error) throw error;
-    return ok(data);
+    return ok(withAliases(data));
   } catch (error) {
     return rethrow(error, "Failed to fetch notice");
   }
@@ -218,7 +225,7 @@ export const createAnnouncement = async (data) => {
       .select(NOTICE_COLUMNS)
       .single();
     if (error) throw error;
-    return created(newNotice);
+    return created(withAliases(newNotice));
   } catch (error) {
     return rethrow(error, "Failed to create notice");
   }

@@ -6,7 +6,14 @@
  * Payments are recorded by administrators against the ads they have entered.
  */
 
-import { supabase, ok, created, rethrow } from "@/services/supabase.js";
+import {
+  supabase,
+  ok,
+  created,
+  rethrow,
+  withAliases,
+  withAliasesAll,
+} from "@/services/supabase.js";
 import { BaseService } from "@/shared/services/BaseService";
 
 const PAYMENT_COLUMNS =
@@ -51,7 +58,7 @@ export const getPayments = async ({
     const total = count ?? data?.length ?? 0;
     const totalPages = Number(size) > 0 ? Math.ceil(total / Number(size)) : 0;
 
-    return ok({ payments: data ?? [], total, totalPages });
+    return ok({ payments: withAliasesAll(data ?? []), total, totalPages });
   } catch (error) {
     return rethrow(error, "Failed to fetch payments");
   }
@@ -66,7 +73,7 @@ export const getPayment = async (id) => {
       .eq("id", id)
       .maybeSingle();
     if (error) throw error;
-    return ok(data);
+    return ok(withAliases(data));
   } catch (error) {
     return rethrow(error, "Failed to fetch payment");
   }
@@ -92,7 +99,7 @@ export const createPayment = async (data) => {
       .select(PAYMENT_COLUMNS)
       .single();
     if (error) throw error;
-    return created(newPayment);
+    return created(withAliases(newPayment));
   } catch (error) {
     return rethrow(error, "Failed to create payment");
   }
@@ -119,7 +126,7 @@ export const updatePayment = async (id, data) => {
       .select(PAYMENT_COLUMNS)
       .single();
     if (error) throw error;
-    return ok(updated);
+    return ok(withAliases(updated));
   } catch (error) {
     return rethrow(error, "Failed to update payment");
   }

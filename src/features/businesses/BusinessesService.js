@@ -4,7 +4,14 @@
  * Directory listing data access, backed by Supabase.
  */
 
-import { supabase, ok, created, rethrow } from "@/services/supabase.js";
+import {
+  supabase,
+  ok,
+  created,
+  rethrow,
+  withAliases,
+  withAliasesAll,
+} from "@/services/supabase.js";
 import { BaseService } from "@/shared/services/BaseService";
 const BUSINESS_COLUMNS =
   "id, name, type, category, email, phone, website, address, description, logo_url, status, created_at, updated_at";
@@ -49,7 +56,7 @@ export const getBusinesses = async ({
     const total = count ?? data?.length ?? 0;
     const totalPages = Number(size) > 0 ? Math.ceil(total / Number(size)) : 0;
 
-    return ok({ businesses: data ?? [], total, totalPages });
+    return ok({ businesses: withAliasesAll(data ?? []), total, totalPages });
   } catch (error) {
     return rethrow(error, "Failed to fetch businesses");
   }
@@ -64,7 +71,7 @@ export const getBusiness = async (id) => {
       .eq("id", id)
       .maybeSingle();
     if (error) throw error;
-    return ok(data);
+    return ok(withAliases(data));
   } catch (error) {
     return rethrow(error, "Failed to fetch business");
   }
@@ -105,7 +112,7 @@ export const createBusiness = async (data) => {
       .select(BUSINESS_COLUMNS)
       .single();
     if (error) throw error;
-    return created(newBusiness);
+    return created(withAliases(newBusiness));
   } catch (error) {
     return rethrow(error, "Failed to create business");
   }
@@ -132,7 +139,7 @@ export const editBusiness = async (id, data) => {
       .select(BUSINESS_COLUMNS)
       .single();
     if (error) throw error;
-    return ok(updated);
+    return ok(withAliases(updated));
   } catch (error) {
     return rethrow(error, "Failed to update business");
   }

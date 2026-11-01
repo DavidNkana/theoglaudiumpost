@@ -7,7 +7,13 @@
  * numbers always match what was actually published.
  */
 
-import { supabase, ok, rethrow } from "@/services/supabase.js";
+import {
+  supabase,
+  ok,
+  rethrow,
+  withAliases,
+  withAliasesAll,
+} from "@/services/supabase.js";
 import { BaseService } from "@/shared/services/BaseService";
 
 /** Applies an optional published-at window to a query. */

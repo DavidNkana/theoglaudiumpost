@@ -6,7 +6,14 @@
  * A campaign groups the ads an administrator has entered for one customer.
  */
 
-import { supabase, ok, created, rethrow } from "@/services/supabase.js";
+import {
+  supabase,
+  ok,
+  created,
+  rethrow,
+  withAliases,
+  withAliasesAll,
+} from "@/services/supabase.js";
 import { BaseService } from "@/shared/services/BaseService";
 
 const CAMPAIGN_COLUMNS =
@@ -46,7 +53,7 @@ export const getCampaigns = async ({
     const total = count ?? data?.length ?? 0;
     const totalPages = Number(size) > 0 ? Math.ceil(total / Number(size)) : 0;
 
-    return ok({ campaigns: data ?? [], total, totalPages });
+    return ok({ campaigns: withAliasesAll(data ?? []), total, totalPages });
   } catch (error) {
     return rethrow(error, "Failed to fetch campaigns");
   }
@@ -61,7 +68,7 @@ export const getCampaign = async (id) => {
       .eq("id", id)
       .maybeSingle();
     if (error) throw error;
-    return ok(data);
+    return ok(withAliases(data));
   } catch (error) {
     return rethrow(error, "Failed to fetch campaign");
   }
@@ -84,7 +91,7 @@ export const createCampaign = async (data) => {
       .select(CAMPAIGN_COLUMNS)
       .single();
     if (error) throw error;
-    return created(newCampaign);
+    return created(withAliases(newCampaign));
   } catch (error) {
     return rethrow(error, "Failed to create campaign");
   }
@@ -108,7 +115,7 @@ export const editCampaign = async (id, data) => {
       .select(CAMPAIGN_COLUMNS)
       .single();
     if (error) throw error;
-    return ok(updated);
+    return ok(withAliases(updated));
   } catch (error) {
     return rethrow(error, "Failed to update campaign");
   }

@@ -64,6 +64,13 @@ export const rethrow = (error, fallback = "Request failed") => {
   return apiError(message, status);
 };
 
+/**
+ * Adds camelCase aliases to a database row.
+ *
+ * @see {@link module:utils/rowAliases}
+ */
+export { withAliases, withAliasesAll } from "@/utils/rowAliases.js";
+
 /* -------------------------------------------------------------------------- */
 /* Auth helpers                                                               */
 /* -------------------------------------------------------------------------- */

@@ -14,7 +14,15 @@
  * Responses keep the axios-shaped `{ status, data }` contract the UI expects.
  */
 
-import { supabase, ok, created, rethrow, publicMediaUrl } from "@/services/supabase.js";
+import {
+  supabase,
+  ok,
+  created,
+  rethrow,
+  publicMediaUrl,
+  withAliases,
+  withAliasesAll,
+} from "@/services/supabase.js";
 import { BaseService } from "@/shared/services/BaseService";
 
 /** Columns selected when listing articles. */
@@ -43,12 +51,14 @@ const TYPE_FILTER = {
  * is resolved to its public URL here.
  */
 const withCoverUrl = (article) => {
-  if (!article?.cover) return article;
+  if (!article) return article;
+  const aliased = withAliases(article);
+  if (!aliased.cover) return aliased;
   return {
-    ...article,
+    ...aliased,
     cover: {
-      ...article.cover,
-      file: publicMediaUrl(article.cover.storage_path || article.cover.file),
+      ...aliased.cover,
+      file: publicMediaUrl(aliased.cover.storage_path || aliased.cover.file),
     },
   };
 };
