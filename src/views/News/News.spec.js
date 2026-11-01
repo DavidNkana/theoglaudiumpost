@@ -153,7 +153,7 @@ describe("News.vue", () => {
       const wrapper = mountNews();
       const text = wrapper.text();
 
-      expect(text).toContain("Top");
+      expect(text).toContain("Top Stories");
       expect(text).toContain("Latest News");
       expect(text).toContain("Popular Stories");
       expect(text).toContain("Popular Tags");
