@@ -1,83 +1,120 @@
 /**
  * features/media/MediaService.js
  *
- * Service module for managing media in the Laudium Biz application.
+ * Image access and uploads against Supabase Storage.
  *
- * This module is the SINGLE entry point for all media API access. UI code
- * (components/views) must never call the HTTP client or build `/media/...`
- * URLs directly — it must use the methods exported here.
- *
- * This module:
- * - Provides functions to fetch media resources (JSON metadata or raw blob)
- * - Resolves displayable <img> src URLs for a given media id
- * - Handles media retrieval by ID
- * - Interacts with the backend API for media operations
+ * Article covers and ad creatives live in the public "public-media" bucket and
+ * are described by rows in the media table. Uploading is an admin action and
+ * is enforced by the bucket's storage policy.
  */
 
-import api from "@/services/api";
+import { supabase, ok, created, rethrow, publicMediaUrl, MEDIA_BUCKET } from "@/services/supabase.js";
 import { BaseService } from "@/shared/services/BaseService";
 
-// Accept header used when requesting raw image bytes from the media endpoint.
 const IMAGE_ACCEPT = "image/png,image/jpeg,image/webp,image/*,*/*";
 
 /**
- * Fetches media metadata (JSON) by its ID.
+ * Fetches a media record by id.
  *
- * @param {number|string} id - The media ID
- * @param {string} [storyType] - The article type (e.g., "top", "featured", "popular")
- * @returns {Promise} - Promise that resolves to the media response
+ * @param {string} id - Media id
+ * @param {string} storyType - Optional story type, used to pick a variant
+ * @returns {Promise} - Promise resolving to { status, data: media }
  */
-export const getMediaById = (id, storyType) => {
-  // If storyType is provided, add it as a query parameter
-  const params = storyType ? { storyType } : {};
-  return api.get(`/media/${id}`, { params });
+export const getMediaById = async (id, storyType) => {
+  try {
+    const columns =
+      "id, file, storage_path, file_type, story_type, upload_type, created_at";
+
+    // Prefer a variant that matches the story type, but fall back to the
+    // media row itself: an article has one cover image, and a card asking for
+    // a different story type must still render it.
+    let query = supabase.from("media").select(columns).eq("id", id);
+    if (storyType) query = query.eq("story_type", storyType);
+
+    let { data, error } = await query.maybeSingle();
+    if (error) throw error;
+
+    if (!data && storyType) {
+      const fallback = await supabase
+        .from("media")
+        .select(columns)
+        .eq("id", id)
+        .maybeSingle();
+      if (fallback.error) throw fallback.error;
+      data = fallback.data;
+    }
+
+    if (!data) {
+      const err = new Error("Media not found");
+      err.response = { status: 404, data: { message: "Media not found" } };
+      throw err;
+    }
+
+    return ok({ ...data, file: publicMediaUrl(data.storage_path || data.file) });
+  } catch (error) {
+    return rethrow(error, "Failed to fetch media");
+  }
 };
 
 /**
- * Fetches media as a raw image blob by its ID.
+ * Resolves a media reference to a usable URL.
  *
- * @param {number|string} id - The media ID
- * @returns {Promise<Blob>} - Promise that resolves to the image blob
+ * A reference is either a media id (uuid) or a direct URL. Both occur in the
+ * UI: article covers are stored as media rows, ad creatives as plain URLs.
  */
-export const getMediaBlob = async (id) => {
-  const response = await api.get(`/media/${id}`, {
-    responseType: "blob",
-    headers: { Accept: IMAGE_ACCEPT },
-    // The media endpoint is public and 302-redirects to a CDN (Cloudinary)
-    // that returns a wildcard `Access-Control-Allow-Origin: *`. A credentialed
-    // request (the api client defaults to withCredentials: true) makes the
-    // browser reject that wildcard, so image bytes must be fetched WITHOUT
-    // credentials.
-    withCredentials: false,
-  });
-  return response.data;
+const resolveUrl = async (reference) => {
+  if (!reference) return null;
+  if (/^https?:\/\//i.test(reference)) return reference;
+
+  const { data } = await supabase
+    .from("media")
+    .select("file, storage_path")
+    .eq("id", reference)
+    .maybeSingle();
+
+  if (!data) return null;
+  return publicMediaUrl(data.storage_path || data.file);
 };
 
 /**
- * Resolves a ready-to-use <img> src for a media id by fetching the image
- * bytes and wrapping them in an object URL. This is the preferred method for
- * image-placeholder components that only DISPLAY the image: it returns a
- * string usable directly as `src`.
- *
- * @param {number|string} id - The media ID
- * @returns {Promise<string>} - Promise that resolves to an object URL
+ * Fetches an image as a blob, from a media id or a direct URL.
  */
-export const getMediaObjectUrl = async (id) => {
-  const blob = await getMediaBlob(id);
+export const getMediaBlob = async (reference) => {
+  try {
+    const url = await resolveUrl(reference);
+    if (!url) {
+      const err = new Error("Media not found");
+      err.response = { status: 404, data: { message: "Media not found" } };
+      throw err;
+    }
+
+    const response = await fetch(url, {
+      headers: { Accept: IMAGE_ACCEPT },
+    });
+    if (!response.ok) {
+      const err = new Error(`Failed to load media (${response.status})`);
+      err.response = { status: response.status, data: { message: err.message } };
+      throw err;
+    }
+    return await response.blob();
+  } catch (error) {
+    return rethrow(error, "Failed to fetch media");
+  }
+};
+
+/**
+ * Fetches an image and wraps it in an object URL for display.
+ */
+export const getMediaObjectUrl = async (reference) => {
+  const blob = await getMediaBlob(reference);
   return URL.createObjectURL(blob);
 };
 
 /**
- * Resolves a media id to a base64 data URL by fetching the image bytes and
- * encoding them. Use this (instead of getMediaObjectUrl) when the value must
- * be persisted or re-submitted to the backend — e.g. pre-loading an existing
- * ad's images into an edit form, where the form re-sends the image payload.
- *
- * @param {number|string} id - The media ID
- * @returns {Promise<string>} - Promise that resolves to a base64 data URL
+ * Fetches an image and converts it to a data URL.
  */
-export const getMediaDataUrl = async (id) => {
-  const blob = await getMediaBlob(id);
+export const getMediaDataUrl = async (reference) => {
+  const blob = await getMediaBlob(reference);
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
@@ -86,18 +123,122 @@ export const getMediaDataUrl = async (id) => {
   });
 };
 
+/**
+ * Uploads an image to the public media bucket and records it in the media table.
+ *
+ * @param {File} file - The image file
+ * @param {string} storyType - Story type the image belongs to
+ * @returns {Promise} - Promise resolving to { status, data: media }
+ */
+export const uploadMedia = async (file, storyType = "latest") => {
+  try {
+    if (!file) {
+      const err = new Error("No file provided");
+      err.response = { status: 400, data: { message: "No file provided" } };
+      throw err;
+    }
+
+    const extension = (file.name?.split(".").pop() || "jpg").toLowerCase();
+    const path = `${storyType}/${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2, 10)}.${extension}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(MEDIA_BUCKET)
+      .upload(path, file, { cacheControl: "3600", upsert: false });
+
+    if (uploadError) throw uploadError;
+
+    const { data: record, error } = await supabase
+      .from("media")
+      .insert({
+        file: publicMediaUrl(path),
+        storage_path: path,
+        file_type: file.type ?? null,
+        story_type: storyType,
+        upload_type: "manual",
+      })
+      .select("id, file, storage_path, file_type, story_type")
+      .single();
+
+    if (error) throw error;
+
+    return created({ ...record, file: publicMediaUrl(path) });
+  } catch (error) {
+    return rethrow(error, "Failed to upload media");
+  }
+};
+
+/**
+ * Uploads an image supplied as a data URL and returns the stored media row.
+ *
+ * The admin ad form hands over base64 images; they are persisted to storage
+ * so the database only ever holds URLs.
+ *
+ * @param {string} dataUrl - A "data:image/..." URL
+ * @param {string} storyType - Story type the image belongs to
+ * @returns {Promise} - Promise resolving to the media row
+ */
+export const uploadDataUrl = async (dataUrl, storyType = "ad") => {
+  try {
+    if (!dataUrl || typeof dataUrl !== "string") {
+      const err = new Error("No image provided");
+      err.response = { status: 400, data: { message: "No image provided" } };
+      throw err;
+    }
+
+    const response = await fetch(dataUrl);
+    const blob = await response.blob();
+
+    const extension = blob.type?.split("/")[1] || "png";
+    const file = new File([blob], `upload-${Date.now()}.${extension}`, {
+      type: blob.type || "image/png",
+    });
+
+    const uploaded = await uploadMedia(file, storyType);
+    return uploaded.data;
+  } catch (error) {
+    return rethrow(error, "Failed to upload image");
+  }
+};
+
+/**
+ * Removes a media record and its file.
+ */
+export const removeMedia = async (id) => {
+  try {
+    const { data } = await supabase
+      .from("media")
+      .select("storage_path, file")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (data?.storage_path) {
+      await supabase.storage.from(MEDIA_BUCKET).remove([data.storage_path]);
+    }
+
+    const { error } = await supabase.from("media").delete().eq("id", id);
+    if (error) throw error;
+    return ok(true);
+  } catch (error) {
+    return rethrow(error, "Failed to remove media");
+  }
+};
+
 export class MediaService extends BaseService {
   constructor() {
     super("media");
   }
 }
 
-// expose the domain functions as instance methods (they don't use `this`)
 Object.assign(MediaService.prototype, {
   getMediaById,
   getMediaBlob,
   getMediaObjectUrl,
   getMediaDataUrl,
+  uploadMedia,
+  uploadDataUrl,
+  removeMedia,
 });
 
 export const mediaService = new MediaService();

@@ -763,11 +763,11 @@ describe("Admin/Articles/Index.vue", () => {
   // ---------------------------------------------------------------------------
   // superadmin router-link (hasRole truthy branch)
   // ---------------------------------------------------------------------------
-  it("renders Manage AI Prompts link for superadmins", async () => {
+  it("has no AI prompt link for superadmins", async () => {
     hasRole.mockReturnValue(true);
     const wrapper = mountView();
     await flushPromises();
-    expect(wrapper.text()).toContain("Manage AI Prompts");
+    expect(wrapper.text()).not.toContain("Manage AI Prompts");
     wrapper.unmount();
   });
 

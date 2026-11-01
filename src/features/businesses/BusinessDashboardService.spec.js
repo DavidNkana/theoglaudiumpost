@@ -1,10 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { callsTo } from "../../../tests/helpers/supabaseMock.js";
 
-vi.mock("@/services/api", () => ({
-  default: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
+const state = vi.hoisted(() => ({
+  tables: {},
+  builders: {},
+  session: null,
+  user: null,
 }));
 
-import api from "@/services/api";
+vi.mock("@/services/supabase.js", async () => {
+  const { buildSupabaseModule } = await import(
+    "../../../tests/helpers/supabaseModuleMock.js"
+  );
+  return buildSupabaseModule(state);
+});
+
 import {
   getBusinessStats,
   getBusinessSpendData,
@@ -12,173 +22,105 @@ import {
   getBusinessPerformanceData,
   getBusinessRecentAds,
   getBusinessRecentPayments,
-  BusinessDashboardService,
-  businessDashboardService,
-} from "@/features/businesses/BusinessDashboardService";
+} from "@/features/businesses/BusinessDashboardService.js";
 
-describe("BusinessDashboardService", () => {
-  beforeEach(() => vi.clearAllMocks());
+describe("features/businesses/BusinessDashboardService", () => {
+  beforeEach(reset);
 
-  it("getBusinessStats() requests the stats endpoint for the id", () => {
-    const promise = Promise.resolve({ data: { ok: true } });
-    api.get.mockReturnValue(promise);
-    const result = getBusinessStats(42);
-    expect(api.get).toHaveBeenCalledWith("/business-dashboard/42/stats");
-    expect(result).toBe(promise);
+  it("summarises a business", async () => {
+    state.tables.ads = {
+      data: [
+        { id: "ad1", status: "active", impressions: 100, clicks: 5, amount: 500 },
+        { id: "ad2", status: "paused", impressions: 0, clicks: 0, amount: 0 },
+      ],
+      error: null,
+    };
+    state.tables.payments = {
+      data: [{ id: "pay1", amount: 500, status: "paid" }],
+      error: null,
+    };
+
+    const response = await getBusinessStats("b1");
+
+    expect(response.data.totalAds).toBe(2);
+    expect(response.data.activeAds).toBe(1);
+    expect(response.data.impressions).toBe(100);
+    expect(response.data.ctr).toBe(5);
+    expect(response.data.totalSpend).toBe(500);
   });
 
-  it("getBusinessSpendData() defaults the period to month when omitted", () => {
-    api.get.mockResolvedValue({ data: {} });
-    getBusinessSpendData(7);
-    expect(api.get).toHaveBeenCalledWith(
-      "/business-dashboard/7/spend-over-time?period=month"
-    );
+  it("buckets spend over time by month", async () => {
+    state.tables.payments = {
+      data: [{ amount: 500, created_at: "2026-01-15T00:00:00Z", status: "paid" }],
+      error: null,
+    };
+
+    const response = await getBusinessSpendData("b1", "month");
+
+    expect(response.data[0].period).toBe("2026-01");
+    expect(response.data[0].amount).toBe(500);
   });
 
-  it("getBusinessSpendData() forwards an explicit period", () => {
-    api.get.mockResolvedValue({ data: {} });
-    getBusinessSpendData(7, "year");
-    expect(api.get).toHaveBeenCalledWith(
-      "/business-dashboard/7/spend-over-time?period=year"
-    );
+  it("buckets spend by placement", async () => {
+    state.tables.ads = {
+      data: [
+        {
+          id: "ad1",
+          amount: 500,
+          impressions: 10,
+          clicks: 1,
+          placement: { id: "p1", name: "news_articles" },
+        },
+      ],
+      error: null,
+    };
+
+    const response = await getBusinessPlacementData("b1");
+
+    expect(response.data[0].placement).toBe("news_articles");
+    expect(response.data[0].amount).toBe(500);
   });
 
-  it("getBusinessPlacementData() requests the per-placement endpoint", () => {
-    api.get.mockResolvedValue({ data: {} });
-    getBusinessPlacementData(3);
-    expect(api.get).toHaveBeenCalledWith(
-      "/business-dashboard/3/spend-per-placement"
-    );
+  it("buckets clicks and impressions over time", async () => {
+    state.tables.ads = {
+      data: [
+        { id: "ad1", impressions: 10, clicks: 1, created_at: "2026-01-15T00:00:00Z" },
+      ],
+      error: null,
+    };
+
+    const response = await getBusinessPerformanceData("b1", "year");
+
+    expect(response.data[0].period).toBe("2026");
+    expect(response.data[0].clicks).toBe(1);
   });
 
-  it("getBusinessPerformanceData() defaults the period to month when omitted", () => {
-    api.get.mockResolvedValue({ data: {} });
-    getBusinessPerformanceData(9);
-    expect(api.get).toHaveBeenCalledWith(
-      "/business-dashboard/9/clicks-and-impressions?period=month"
-    );
+  it("lists the most recent ads", async () => {
+    state.tables.ads = { data: [{ id: "ad1" }], error: null };
+
+    const response = await getBusinessRecentAds(5);
+
+    expect(response.data).toHaveLength(1);
   });
 
-  it("getBusinessPerformanceData() forwards an explicit period", () => {
-    api.get.mockResolvedValue({ data: {} });
-    getBusinessPerformanceData(9, "week");
-    expect(api.get).toHaveBeenCalledWith(
-      "/business-dashboard/9/clicks-and-impressions?period=week"
-    );
+  it("lists the most recent payments", async () => {
+    state.tables.payments = { data: [{ id: "pay1" }], error: null };
+
+    const response = await getBusinessRecentPayments("b1", 5);
+
+    expect(response.data).toHaveLength(1);
   });
 
-  it("getBusinessRecentAds() defaults the limit to 5 when omitted", () => {
-    api.get.mockResolvedValue({ data: {} });
-    getBusinessRecentAds();
-    expect(api.get).toHaveBeenCalledWith(
-      "/business/dashboard/recent-ads?limit=5"
-    );
-  });
+  it("rejects when the query fails", async () => {
+    state.tables.ads = { data: null, error: { message: "denied" } };
 
-  it("getBusinessRecentAds() forwards an explicit limit", () => {
-    api.get.mockResolvedValue({ data: {} });
-    getBusinessRecentAds(10);
-    expect(api.get).toHaveBeenCalledWith(
-      "/business/dashboard/recent-ads?limit=10"
-    );
-  });
-
-  it("getBusinessRecentPayments() defaults the limit to 5 when omitted", () => {
-    api.get.mockResolvedValue({ data: {} });
-    getBusinessRecentPayments(2);
-    expect(api.get).toHaveBeenCalledWith(
-      "/business-dashboard/2/recent-payments?limit=5"
-    );
-  });
-
-  it("getBusinessRecentPayments() forwards an explicit limit", () => {
-    api.get.mockResolvedValue({ data: {} });
-    getBusinessRecentPayments(2, 25);
-    expect(api.get).toHaveBeenCalledWith(
-      "/business-dashboard/2/recent-payments?limit=25"
-    );
-  });
-
-  it("propagates rejection from the underlying client (catch/error path)", async () => {
-    const err = new Error("network down");
-    api.get.mockRejectedValue(err);
-    await expect(getBusinessStats(1)).rejects.toBe(err);
-  });
-
-  describe("BusinessDashboardService class", () => {
-    it("constructs with the business-dashboard resource and shared api", () => {
-      const svc = new BusinessDashboardService();
-      expect(svc.resource).toBe("business-dashboard");
-      expect(svc.api).toBe(api);
-    });
-
-    it("inherits BaseService REST verbs", () => {
-      const svc = new BusinessDashboardService();
-      api.get.mockResolvedValue({ data: {} });
-      api.post.mockResolvedValue({ data: {} });
-      api.put.mockResolvedValue({ data: {} });
-      api.delete.mockResolvedValue({ data: {} });
-
-      svc.list({ q: 1 });
-      expect(api.get).toHaveBeenCalledWith("/business-dashboard", {
-        params: { q: 1 },
-      });
-
-      svc.get(5);
-      expect(api.get).toHaveBeenCalledWith("/business-dashboard/5");
-
-      svc.create({ name: "x" });
-      expect(api.post).toHaveBeenCalledWith("/business-dashboard/create", {
-        name: "x",
-      });
-
-      svc.update(5, { name: "y" });
-      expect(api.put).toHaveBeenCalledWith("/business-dashboard/5", {
-        name: "y",
-      });
-
-      svc.remove(5);
-      expect(api.delete).toHaveBeenCalledWith("/business-dashboard/5");
-    });
-
-    it("exposes the domain functions as instance methods", () => {
-      const svc = new BusinessDashboardService();
-      api.get.mockResolvedValue({ data: {} });
-
-      svc.getBusinessStats(11);
-      expect(api.get).toHaveBeenCalledWith("/business-dashboard/11/stats");
-
-      svc.getBusinessSpendData(11);
-      expect(api.get).toHaveBeenCalledWith(
-        "/business-dashboard/11/spend-over-time?period=month"
-      );
-
-      svc.getBusinessPlacementData(11);
-      expect(api.get).toHaveBeenCalledWith(
-        "/business-dashboard/11/spend-per-placement"
-      );
-
-      svc.getBusinessPerformanceData(11);
-      expect(api.get).toHaveBeenCalledWith(
-        "/business-dashboard/11/clicks-and-impressions?period=month"
-      );
-
-      svc.getBusinessRecentAds();
-      expect(api.get).toHaveBeenCalledWith(
-        "/business/dashboard/recent-ads?limit=5"
-      );
-
-      svc.getBusinessRecentPayments(11);
-      expect(api.get).toHaveBeenCalledWith(
-        "/business-dashboard/11/recent-payments?limit=5"
-      );
-    });
-  });
-
-  it("businessDashboardService singleton is an instance and delegates", () => {
-    expect(businessDashboardService).toBeInstanceOf(BusinessDashboardService);
-    api.get.mockResolvedValue({ data: {} });
-    businessDashboardService.getBusinessStats(99);
-    expect(api.get).toHaveBeenCalledWith("/business-dashboard/99/stats");
+    await expect(getBusinessStats("b1")).rejects.toThrow("denied");
   });
 });
+
+const reset = () => {
+  state.tables = {};
+  Object.keys(state.builders).forEach((key) => delete state.builders[key]);
+  state.session = null;
+  state.user = null;
+};

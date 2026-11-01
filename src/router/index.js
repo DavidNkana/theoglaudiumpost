@@ -296,14 +296,6 @@ const routes = [
     component: () => import("@/views/Admin/AdminLogin.vue"),
     meta: { title: "Admin Login", publicRoute: true },
   },
-  // FIX LCP #712: Handre review - alias /admin/prompts → /admin/articles/prompts
-  // Previous production candidate failed with app-404 at /admin/prompts.
-  // The actual route is /admin/articles/prompts (ManagePrompts route below).
-  // This standalone redirect preserves auth guards from the AdminLayout parent.
-  {
-    path: "/admin/prompts",
-    redirect: "/admin/articles/prompts",
-  },
   {
     path: "/admin",
     component: AdminLayout,
@@ -327,12 +319,6 @@ const routes = [
             component: () => import("@/views/Admin/Articles/Index.vue"),
           },
           {
-            path: "prompt",
-            name: "ArticlePrompt",
-            meta: { title: "Create Article", requiresAuth: true },
-            component: () => import("@/views/Admin/Articles/ArticlePromptView.vue"),
-          },
-          {
             path: "create",
             name: "CreateArticle",
             meta: { title: "Create Article", requiresAuth: true },
@@ -344,25 +330,7 @@ const routes = [
             meta: { title: "Edit Article", requiresAuth: true },
             component: () => import("@/views/Admin/Articles/Edit.vue"),
           },
-          {
-            path: "prompts",
-            name: "ManagePrompts",
-            meta: {
-              title: "Manage AI Prompts",
-              requiresAuth: true,
-              // Removed superAdminRoute - only requires admin auth, not superadmin
-              // FIX: LCP #712 PROMPT-001 - route was returning 403 because
-              // superadmin-only requirement was incorrect for admin role users
-            },
-            component: () => import("@/views/Admin/Articles/PromptManager.vue"),
-          },
         ],
-      },
-      {
-        path: "source-articles",
-        name: "AdminSourceArticles",
-        meta: { title: "Source Articles", requiresAuth: true },
-        component: () => import("@/views/Admin/Articles/SourceArticles.vue"),
       },
       {
         path: "ads",

@@ -6,26 +6,39 @@ The Laudium Biz App is a digital news and community-engagement hub designed spec
 ## Core Purpose
 - Streamline discovery and distribution of local news
 - Empower residents and local businesses to consume and contribute content
-- Provide modern tools (AI, analytics) to inform decisions and drive engagement
+- Provide modern tools (analytics) to inform decisions and drive engagement
 
 ## Key Stakeholders
 - **Residents & Community Contributors**: Citizens who submit tips, stories, photos, and events
 - **Local Businesses & Advertisers**: Small shops and entrepreneurs seeking targeted ad placements
 - **Editorial Team & Moderators**: Curators who refine content and ensure quality
 
-## Core Functionality
-1. **AI-Assisted Article Management**
-   - Auto-draft generation via GPT integration
-   - Intuitive editor for human review and fact-checking
+## System Architecture
 
-2. **Self-Service Advert Manager**
-   - Customized ad creation and scheduling
-   - PayFast integration for payments
+The platform runs on **Supabase** (PostgreSQL, Auth, Storage, Row Level
+Security). The Vue frontend talks to Supabase directly; there is no separate
+application server.
+
+- **Content model**: articles, ads, categories, tags, media, announcements,
+  events, businesses, campaigns, payments and profiles
+- **Authorization**: Row Level Security. Readers can read published content;
+  only administrators can create or change content.
+- **Images**: article covers and ad creatives live in a public storage bucket
+- **Accounts**: Supabase Auth. The `profiles` table carries the role
+  (`admin` or `business`) that the security policies read
+
+## Core Functionality
+1. **Admin-Authored Article Management**
+   - Every article is written, illustrated and published by an administrator
+   - Rich editor with cover images uploaded to object storage
+
+2. **Admin-Authored Advert Manager**
+   - Administrators create, schedule and price every ad in the admin dashboard
    - Tiered premium visibility options
 
-3. **GPT-Powered Deep Search**
-   - Natural-language queries over archives and live content
-   - Keyword or conversational search capabilities
+3. **Search**
+   - Keyword search across articles, categories and tags
+   - Archive browsing by date, category and tag
 
 4. **Community News Submission Portal**
    - Web form for text, images, and video uploads
@@ -49,7 +62,7 @@ The Laudium Biz App is a digital news and community-engagement hub designed spec
 
 ## Unique Differentiators
 - **Community-First Design**: Blends professional journalism with grassroots reporting
-- **AI-Human Collaboration**: Speeds up content creation while preserving editorial integrity
+- **Human Editorial Ownership**: Every story is written and published by the editorial team
 - **Local Monetization Engine**: Affordable ad model for small businesses
 - **Platform Agnosticism**: Seamless experience across browser and Android environments
 

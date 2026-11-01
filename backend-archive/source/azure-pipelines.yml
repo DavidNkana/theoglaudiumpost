@@ -1,4 +1,0 @@
-# Auto-generated. Marker file. The plugin's ensurePipelineDefinitions
-# step creates the per-component pipelines via the REST API; this file
-# is a reference for the auto-discovery model.
-# See: docs/superpowers/specs/2026-06-09-pipeline-shape-design.md Section 5a

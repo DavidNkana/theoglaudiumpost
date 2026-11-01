@@ -1,181 +1,180 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { callsTo } from "../../../tests/helpers/supabaseMock.js";
 
-vi.mock("@/services/api", () => ({
-  default: {
-    get: vi.fn(),
-    post: vi.fn(),
-    put: vi.fn(),
-    delete: vi.fn(),
-  },
+const state = vi.hoisted(() => ({
+  tables: {},
+  builders: {},
+  session: null,
+  user: null,
 }));
 
-import api from "@/services/api";
+vi.mock("@/services/supabase.js", async () => {
+  const { buildSupabaseModule } = await import(
+    "../../../tests/helpers/supabaseModuleMock.js"
+  );
+  return buildSupabaseModule(state);
+});
+
 import {
   getAnnouncements,
+  getAnnouncementCategories,
+  getCategories,
   getAnnouncement,
   getAnnouncementBySlug,
   createAnnouncement,
   editAnnouncement,
   removeAnnouncement,
-  getCategories,
   createCategory,
   editCategory,
   changeCategoryStatus,
   removeCategory,
-  AnnouncementsService,
-  announcementsService,
-} from "@/features/announcements/AnnouncementsService";
-import announcementsServiceDefault from "@/features/announcements/AnnouncementsService";
-import { BaseService } from "@/shared/services/BaseService";
+} from "@/features/announcements/AnnouncementsService.js";
 
-describe("AnnouncementsService", () => {
-  beforeEach(() => vi.clearAllMocks());
+describe("features/announcements/AnnouncementsService", () => {
+  beforeEach(reset);
 
-  describe("getAnnouncements()", () => {
-    it("uses default options when called with an empty object", () => {
-      api.get.mockReturnValue("RESP");
-      const result = getAnnouncements({});
-      expect(api.get).toHaveBeenCalledWith(
-        "notices?priority=&search=&category=&status=&size=10&page=0&excludeFunerals=true"
-      );
-      expect(result).toBe("RESP");
+  it("lists notices with pagination info", async () => {
+    state.tables.announcements = { data: [{ id: "n1" }], error: null, count: 1 };
+
+    const response = await getAnnouncements({ size: 10 });
+
+    expect(response.status).toBe(200);
+    expect(response.data.announcements).toHaveLength(1);
+    expect(response.data.totalPages).toBe(1);
+  });
+
+  it("excludes funeral notices by default", async () => {
+    state.tables.announcements = { data: [], error: null, count: 0 };
+
+    await getAnnouncements({});
+
+    expect(callsTo(state.builders.announcements, "eq")[0].args).toEqual([
+      "is_funeral",
+      false,
+    ]);
+  });
+
+  it("filters notices by category id", async () => {
+    state.tables.announcements = { data: [], error: null, count: 0 };
+
+    await getAnnouncements({ category: "cat-1" });
+
+    const eqArgs = callsTo(state.builders.announcements, "eq").map((c) => c.args);
+    expect(eqArgs).toContainEqual(["category_id", "cat-1"]);
+  });
+
+  it("lists categories with their notice counts", async () => {
+    state.tables.notice_categories = {
+      data: [{ id: "cat-1", name: "General" }],
+      error: null,
+    };
+    state.tables.announcements = {
+      data: [{ category_id: "cat-1" }],
+      error: null,
+    };
+
+    const response = await getAnnouncementCategories();
+
+    expect(response.data.categories[0].count).toBe(1);
+  });
+
+  it("exposes the categories under the name the notices store uses", async () => {
+    state.tables.notice_categories = { data: [], error: null };
+    state.tables.announcements = { data: [], error: null };
+
+    const response = await getCategories();
+
+    expect(response.status).toBe(200);
+    expect(response.data.categories).toEqual([]);
+  });
+
+  it("fetches a notice by id", async () => {
+    state.tables.announcements = { data: { id: "n1" }, error: null };
+
+    const response = await getAnnouncement("n1");
+
+    expect(response.data.id).toBe("n1");
+  });
+
+  it("fetches a notice by slug", async () => {
+    state.tables.announcements = { data: { id: "n1" }, error: null };
+
+    const response = await getAnnouncementBySlug("a-notice");
+
+    expect(response.data.id).toBe("n1");
+  });
+
+  it("reports a missing notice as not found", async () => {
+    state.tables.announcements = { data: null, error: null };
+
+    await expect(getAnnouncementBySlug("nope")).rejects.toThrow("Notice not found");
+  });
+
+  it("creates a notice", async () => {
+    state.tables.announcements = { data: { id: "n1" }, error: null };
+
+    const response = await createAnnouncement({ title: "Notice", slug: "notice" });
+
+    expect(response.status).toBe(201);
+    const insert = callsTo(state.builders.announcements, "insert")[0];
+    expect(insert.args[0]).toMatchObject({ title: "Notice", slug: "notice" });
+  });
+
+  it("updates a notice", async () => {
+    state.tables.announcements = { data: { id: "n1" }, error: null };
+
+    const response = await editAnnouncement("n1", { title: "Notice", slug: "notice" });
+
+    expect(response.status).toBe(200);
+  });
+
+  it("removes a notice", async () => {
+    state.tables.announcements = { data: null, error: null };
+
+    const response = await removeAnnouncement("n1");
+
+    expect(response.status).toBe(200);
+  });
+
+  it("creates a notice category", async () => {
+    state.tables.notice_categories = { data: { id: "cat-1" }, error: null };
+
+    const response = await createCategory({ name: "General", slug: "general" });
+
+    expect(response.status).toBe(201);
+  });
+
+  it("updates a notice category", async () => {
+    state.tables.notice_categories = { data: { id: "cat-1" }, error: null };
+
+    const response = await editCategory("cat-1", { name: "General", slug: "general" });
+
+    expect(response.status).toBe(200);
+  });
+
+  it("activates or retires a notice category", async () => {
+    state.tables.notice_categories = { data: { id: "cat-1" }, error: null };
+
+    const response = await changeCategoryStatus("cat-1", { is_active: false });
+
+    expect(response.status).toBe(200);
+    expect(callsTo(state.builders.notice_categories, "update")[0].args[0]).toEqual({
+      is_active: false,
     });
-
-    it("forwards every provided option (including excludeFunerals=false)", () => {
-      api.get.mockReturnValue("RESP2");
-      const result = getAnnouncements({
-        page: 3,
-        size: 25,
-        search: "covid",
-        priority: "high",
-        category: "cat-1",
-        status: "published",
-        excludeFunerals: false,
-      });
-      expect(api.get).toHaveBeenCalledWith(
-        "notices?priority=high&search=covid&category=cat-1&status=published&size=25&page=3&excludeFunerals=false"
-      );
-      expect(result).toBe("RESP2");
-    });
   });
 
-  it("getAnnouncement() requests a single notice by id", () => {
-    api.get.mockReturnValue("ONE");
-    expect(getAnnouncement(42)).toBe("ONE");
-    expect(api.get).toHaveBeenCalledWith("notices/42");
-  });
+  it("removes a notice category", async () => {
+    state.tables.notice_categories = { data: null, error: null };
 
-  it("getAnnouncementBySlug() requests a notice by slug", () => {
-    api.get.mockReturnValue("SLUG");
-    expect(getAnnouncementBySlug("hello-world")).toBe("SLUG");
-    expect(api.get).toHaveBeenCalledWith("notices/slug/hello-world");
-  });
+    const response = await removeCategory("cat-1");
 
-  it("createAnnouncement() posts to the create endpoint", () => {
-    api.post.mockReturnValue("CREATED");
-    const payload = { title: "x" };
-    expect(createAnnouncement(payload)).toBe("CREATED");
-    expect(api.post).toHaveBeenCalledWith("notices/create", payload);
-  });
-
-  it("editAnnouncement() puts to the id endpoint", () => {
-    api.put.mockReturnValue("EDITED");
-    const payload = { title: "y" };
-    expect(editAnnouncement(7, payload)).toBe("EDITED");
-    expect(api.put).toHaveBeenCalledWith("notices/7", payload);
-  });
-
-  it("removeAnnouncement() deletes the id endpoint", () => {
-    api.delete.mockReturnValue("DELETED");
-    expect(removeAnnouncement(9)).toBe("DELETED");
-    expect(api.delete).toHaveBeenCalledWith("notices/9");
-  });
-
-  describe("getCategories()", () => {
-    it("omits the status param when status is falsy (default null)", () => {
-      api.get.mockReturnValue("CATS");
-      const result = getCategories({});
-      expect(api.get).toHaveBeenCalledWith(
-        "notices/categories?search=&size=10&page=0"
-      );
-      expect(result).toBe("CATS");
-    });
-
-    it("includes the status param when status is provided", () => {
-      api.get.mockReturnValue("CATS2");
-      const result = getCategories({
-        page: 2,
-        size: 5,
-        search: "term",
-        status: "active",
-      });
-      expect(api.get).toHaveBeenCalledWith(
-        "notices/categories?search=term&status=active&size=5&page=2"
-      );
-      expect(result).toBe("CATS2");
-    });
-  });
-
-  it("createCategory() posts to the categories endpoint", () => {
-    api.post.mockReturnValue("CAT_CREATED");
-    const payload = { name: "News" };
-    expect(createCategory(payload)).toBe("CAT_CREATED");
-    expect(api.post).toHaveBeenCalledWith("notices/categories", payload);
-  });
-
-  it("editCategory() puts to the category id endpoint", () => {
-    api.put.mockReturnValue("CAT_EDITED");
-    const payload = { name: "Updated" };
-    expect(editCategory(3, payload)).toBe("CAT_EDITED");
-    expect(api.put).toHaveBeenCalledWith("notices/categories/3", payload);
-  });
-
-  it("changeCategoryStatus() puts to the change-status endpoint", () => {
-    api.put.mockReturnValue("STATUS_CHANGED");
-    const payload = { status: "inactive" };
-    expect(changeCategoryStatus(4, payload)).toBe("STATUS_CHANGED");
-    expect(api.put).toHaveBeenCalledWith(
-      "notices/categories/4/change-status",
-      payload
-    );
-  });
-
-  it("removeCategory() deletes the category id endpoint", () => {
-    api.delete.mockReturnValue("CAT_DELETED");
-    expect(removeCategory(6)).toBe("CAT_DELETED");
-    expect(api.delete).toHaveBeenCalledWith("notices/categories/6");
-  });
-
-  describe("AnnouncementsService class & singleton", () => {
-    it("constructs with the 'notices' resource and extends BaseService", () => {
-      const svc = new AnnouncementsService();
-      expect(svc).toBeInstanceOf(BaseService);
-      expect(svc.resource).toBe("notices");
-      expect(svc.api).toBe(api);
-    });
-
-    it("exposes the domain functions as instance methods", () => {
-      const svc = new AnnouncementsService();
-      api.get.mockReturnValue("SLUG_VIA_INSTANCE");
-      expect(svc.getAnnouncementBySlug("abc")).toBe("SLUG_VIA_INSTANCE");
-      expect(api.get).toHaveBeenCalledWith("notices/slug/abc");
-    });
-
-    it("inherits BaseService default verbs", () => {
-      api.get.mockReturnValue("LIST");
-      expect(announcementsService.list({ q: 1 })).toBe("LIST");
-      expect(api.get).toHaveBeenCalledWith("/notices", { params: { q: 1 } });
-    });
-
-    it("singleton delegates a domain method through the prototype", () => {
-      api.get.mockReturnValue("SINGLETON");
-      expect(announcementsService.getAnnouncement(11)).toBe("SINGLETON");
-      expect(api.get).toHaveBeenCalledWith("notices/11");
-    });
-
-    it("default export is the singleton instance", () => {
-      expect(announcementsServiceDefault).toBe(announcementsService);
-      expect(announcementsServiceDefault).toBeInstanceOf(AnnouncementsService);
-    });
+    expect(response.status).toBe(200);
   });
 });
+
+const reset = () => {
+  state.tables = {};
+  Object.keys(state.builders).forEach((key) => delete state.builders[key]);
+  state.session = null;
+  state.user = null;
+};

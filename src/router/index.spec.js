@@ -127,14 +127,12 @@ describe("router/index.js", () => {
         routes.find((r) => r.path === "/:pathMatch(.*)*")?.redirect
       ).toBe("/404");
 
-      // Standalone /admin/prompts redirect preserves auth guards.
-      expect(
-        routes.find((r) => r.path === "/admin/prompts")?.redirect
-      ).toBe("/admin/articles/prompts");
+      // The AI prompt manager is gone: no route, no redirect.
+      expect(routes.find((r) => r.path === "/admin/prompts")).toBeUndefined();
 
       // Named protected/super-admin routes exist.
       expect(findByName(routes, "BusinessDashboard")).toBeTruthy();
-      expect(findByName(routes, "ManagePrompts")).toBeTruthy();
+      expect(findByName(routes, "CreateArticle")).toBeTruthy();
       const payments = findByName(routes, "PaymentsManagement");
       expect(payments.meta.superAdminRoute).toBe(true);
     });

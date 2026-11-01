@@ -176,16 +176,6 @@
                 ]"
               />
             </li>
-            <li v-if="hasRole('superadmin')" class="nav-item">
-              <router-link
-                  to="/admin/articles/prompts"
-                  class="nav-link"
-                  active-class="active"
-              >
-                <i class="bi bi-gear me-2"></i>
-                <span>Manage AI Prompts</span></router-link
-              >
-            </li>
           </ul>
 
           <hr class="my-3" />

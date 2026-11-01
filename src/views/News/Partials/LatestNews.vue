@@ -14,9 +14,7 @@ import ArticlesRow from "./ArticlesRow.vue";
 import InfiniteLoading from "v3-infinite-loading";
 import "v3-infinite-loading/lib/style.css";
 import {useMobile} from "@/composables/useMobile.js";
-import { getArticleFeed } from "@/features/articles/ArticlesService";
 import { getAds } from "@/features/ads/AdsService";
-
 const props = defineProps({
   page: {
     type: String,
@@ -37,8 +35,7 @@ const props = defineProps({
 });
 
 const NEWS_ARTICLES_AD_PLACEMENT = "news_articles";
-const store = useStore();
-const {isMobile} = useMobile()
+const store = useStore();const {isMobile} = useMobile()
 const currentPage = ref(0);
 const isLoading = ref(false);
 const scrollTarget = ref(null);
@@ -63,6 +60,57 @@ const articlesData = computed(() => {
       ? fullArticles.value.slice(0, 8)
       : fullArticles.value.slice(0, 6);
 });
+
+/**
+ * The article grid is a checkerboard: article, ad, article, ad.
+ *
+ * Every ad occupies exactly one cell — the space a former article card used to
+ * take — so the grid stays even. Ads are entered by an administrator and
+ * targeted at the grid placement.
+ */
+const gridAds = ref([]);
+
+const mixedFeed = computed(() => {
+  const articles = articlesData.value ?? [];
+  const ads = gridAds.value ?? [];
+
+  if (!ads.length) {
+    return articles.map((article) => ({ type: "article", data: article }));
+  }
+
+  const feed = [];
+  articles.forEach((article, index) => {
+    feed.push({ type: "article", data: article });
+
+    // An ad follows every article, so the grid reads
+    // article - ad - article - ad. The last article is not followed by an ad,
+    // which keeps the grid from ending on a dangling ad.
+    if (index < articles.length - 1) {
+      feed.push({ type: "ad", data: ads[index % ads.length] });
+    }
+  });
+
+  return feed;
+});
+
+/**
+ * Loads the ads that run in the article grid.
+ */
+const fetchGridAds = async () => {
+  try {
+    const response = await getAds({
+      status: "active",
+      placement: NEWS_ARTICLES_AD_PLACEMENT,
+      size: 20,
+    });
+
+    const ads = response.data?.ads ?? response.data ?? [];
+    gridAds.value = Array.isArray(ads) ? ads : [];
+  } catch (error) {
+    console.error("Error fetching grid ads:", error);
+    gridAds.value = [];
+  }
+};
 
 // Fetch active ads for mobile home page rotation
 const fetchActiveAds = async () => {
@@ -212,6 +260,10 @@ onMounted(() => {
   if (props.page === "home") {
     fetchActiveAds();
   }
+  // The article grid interleaves ads between articles.
+  if (props.page === "news") {
+    fetchGridAds();
+  }
 });
 
 const loadMore = async ($state) => {
@@ -262,30 +314,18 @@ const loadMore = async ($state) => {
     <!-- NEWS PAGE: Grid with Infinite Scroll -->
     <div v-if="page === 'news'" ref="scrollTarget" class="news-grid-container">
       <div class="news-grid">
-        <template v-for="(article, index) in articlesData" :key="article.id + '-' + index">
+        <template v-for="(item, index) in mixedFeed" :key="item.type + '-' + (item.data?.id || index)">
+          <!-- Ad card — occupies one full article cell -->
+          <div v-if="item.type === 'ad'" class="grid-item grid-item-ad-card">
+            <PinAdCard :ad="item.data" fill />
+          </div>
+
           <!-- Regular Article -->
-          <div class="grid-item" :class="{ 'grid-item-featured': index % 6 === 0 }">
+          <div v-else class="grid-item">
             <StandardCard
-                :article="article"
+                :article="item.data"
                 :isTopStory="true"
-                :isFeatured="index % 6 === 0"
             />
-          </div>
-
-          <!-- Square Ad after every 6 articles -->
-          <div
-              v-if="(index + 1) % 6 === 0 && index > 0"
-              class="grid-item grid-item-ad"
-          >
-            <AdArticle :placement="IN_ARTICLE_BOTTOM" :adProvider="'direct'" />
-          </div>
-
-          <!-- Banner Ad after every 12 articles -->
-          <div
-              v-if="(index + 1) % 12 === 0 && index > 0"
-              class="grid-item grid-item-banner"
-          >
-            <AdBanner size="medium" :placement="IN_ARTICLE_BOTTOM" :adProvider="'google'" />
           </div>
         </template>
       </div>
@@ -446,6 +486,17 @@ const loadMore = async ($state) => {
 
 .grid-item:hover:not(.grid-item-ad):not(.grid-item-banner) {
   transform: translateY(-4px);
+}
+
+/* An ad takes the full space of one article card */
+.grid-item-ad-card {
+  min-height: 250px;
+  overflow: hidden;
+}
+
+.grid-item-ad-card :deep(.ad-card-link) {
+  display: block;
+  height: 100%;
 }
 
 .grid-item-featured {

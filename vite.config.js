@@ -4,20 +4,45 @@ import { defineConfig, loadEnv } from "vite";
 import vue from "@vitejs/plugin-vue";
 import { VitePWA } from "vite-plugin-pwa";
 import vueDevTools from "vite-plugin-vue-devtools";
-import { normalizeApiBaseUrl } from "./src/config/api-url.js";
-
-function validateProductionApiUrl() {
+/**
+ * Fails a production build when the Supabase connection is missing or
+ * malformed. A frontend that boots without a database silently renders empty
+ * sections, which is far harder to diagnose than a build failure.
+ */
+function validateProductionSupabaseConfig() {
   return {
-    name: "validate-production-api-url",
+    name: "validate-production-supabase-config",
     config(_, { mode }) {
       if (mode !== "production") return;
 
       const env = loadEnv(mode, process.cwd(), "");
-      try {
-        normalizeApiBaseUrl(env.VITE_PROD_API_BASE_URL, { mode });
-      } catch (error) {
+      const url = env.VITE_SUPABASE_URL;
+      const anonKey = env.VITE_SUPABASE_ANON_KEY;
+
+      if (!url) {
         throw new Error(
-          `[production-api-config] VITE_PROD_API_BASE_URL is invalid: ${error.message}`,
+          "[production-supabase-config] VITE_SUPABASE_URL is required for production builds.",
+        );
+      }
+
+      if (!anonKey) {
+        throw new Error(
+          "[production-supabase-config] VITE_SUPABASE_ANON_KEY is required for production builds.",
+        );
+      }
+
+      let parsed;
+      try {
+        parsed = new URL(url);
+      } catch {
+        throw new Error(
+          `[production-supabase-config] VITE_SUPABASE_URL is not a valid URL: ${url}`,
+        );
+      }
+
+      if (parsed.protocol !== "https:") {
+        throw new Error(
+          "[production-supabase-config] VITE_SUPABASE_URL must be an absolute HTTPS URL.",
         );
       }
     },
@@ -27,7 +52,7 @@ function validateProductionApiUrl() {
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
-    validateProductionApiUrl(),
+    validateProductionSupabaseConfig(),
     vue(),
     // Custom plugin to handle markdown files in development mode
     {

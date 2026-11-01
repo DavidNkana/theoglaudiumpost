@@ -3,51 +3,59 @@
  *
  * Object-oriented base class for every domain service in src/features/.
  *
- * It owns the shared HTTP client and the common REST verbs so each feature
- * service (ArticlesService, AdsService, BusinessesService, …) extends it
- * instead of repeating axios plumbing. Domain services add their own methods
- * for endpoints that don't follow the default REST shape.
- *
- * All API access still flows through the central client (services/api.js);
- * BaseService is the single OO entry point that wraps it.
+ * Domain services own their data access (Supabase) and expose it as named
+ * functions; this class only provides the shared shape — a resource name and
+ * a small set of generic verbs.
  */
-
-import api from "@/services/api";
 
 export class BaseService {
   /**
-   * @param {string} [resource=""] - REST resource segment (e.g. "articles"),
-   *   used by the default verbs below.
+   * @param {string} [resource=""] - Resource segment (e.g. "articles"),
    */
   constructor(resource = "") {
     this.resource = resource;
-    /** Shared axios client (base URL, auth + refresh interceptors). */
-    this.api = api;
   }
 
-  /** GET /{resource} with optional query params. */
+  /** Lists the resource. */
   list(params = {}) {
-    return this.api.get(`/${this.resource}`, { params });
+    return Promise.reject(
+      new Error(`${this.constructor.name}.list() is not implemented`),
+    );
   }
 
-  /** GET /{resource}/{id}. */
-  get(id) {
-    return this.api.get(`/${this.resource}/${id}`);
+  /** Reads the resource collection. */
+  get(params = {}) {
+    return Promise.reject(
+      new Error(`${this.constructor.name}.get() is not implemented`),
+    );
   }
 
-  /** POST /{resource}/create. */
+  /** Reads a single record. */
+  getById(id) {
+    return Promise.reject(
+      new Error(`${this.constructor.name}.getById() is not implemented`),
+    );
+  }
+
+  /** Creates a record. */
   create(data) {
-    return this.api.post(`/${this.resource}/create`, data);
+    return Promise.reject(
+      new Error(`${this.constructor.name}.create() is not implemented`),
+    );
   }
 
-  /** PUT /{resource}/{id}. */
+  /** Updates a record. */
   update(id, data) {
-    return this.api.put(`/${this.resource}/${id}`, data);
+    return Promise.reject(
+      new Error(`${this.constructor.name}.update() is not implemented`),
+    );
   }
 
-  /** DELETE /{resource}/{id}. */
+  /** Deletes a record. */
   remove(id) {
-    return this.api.delete(`/${this.resource}/${id}`);
+    return Promise.reject(
+      new Error(`${this.constructor.name}.remove() is not implemented`),
+    );
   }
 }
 

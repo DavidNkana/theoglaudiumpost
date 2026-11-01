@@ -11,16 +11,6 @@ vi.mock("axios", () => ({
   },
 }));
 
-// Central HTTP client wrapped by BaseService.
-vi.mock("@/services/api", () => ({
-  default: {
-    get: vi.fn(),
-    post: vi.fn(),
-    put: vi.fn(),
-    delete: vi.fn(),
-  },
-}));
-
 // config/app reads env at import time; we control YOUTUBE_API_KEY here so the
 // `!YOUTUBE_API_KEY` guard can be exercised on both sides via vi.doMock +
 // dynamic import.
@@ -29,7 +19,6 @@ vi.mock("@/config/app", () => ({
 }));
 
 import axios from "axios";
-import api from "@/services/api";
 
 const BASE = "https://www.googleapis.com/youtube/v3";
 
@@ -40,7 +29,6 @@ const BASE = "https://www.googleapis.com/youtube/v3";
 async function importWithKey(key) {
   vi.resetModules();
   vi.doMock("axios", () => ({ default: { get: axios.get } }));
-  vi.doMock("@/services/api", () => ({ default: api }));
   vi.doMock("@/config/app", () => ({ YOUTUBE_API_KEY: key }));
   return import("@/features/youtube/YoutubeService");
 }
@@ -354,7 +342,6 @@ describe("YoutubeService", () => {
       const svc = new mod.YoutubeService();
       expect(svc).toBeInstanceOf(SameRealmBaseService);
       expect(svc.resource).toBe("youtube");
-      expect(svc.api).toBe(api);
     });
 
     it("exposes the domain functions as instance methods", async () => {
@@ -373,13 +360,10 @@ describe("YoutubeService", () => {
       expect(result).toBe(data);
     });
 
-    it("inherits BaseService REST verbs via the 'youtube' resource", () => {
-      const res = { data: 1 };
-      api.get.mockReturnValue(res);
-      expect(mod.youtubeService.list({ page: 1 })).toBe(res);
-      expect(api.get).toHaveBeenCalledWith("/youtube", {
-        params: { page: 1 },
-      });
+    it("rejects the generic REST verbs until a domain service implements them", async () => {
+      await expect(mod.youtubeService.list({ page: 1 })).rejects.toThrow(
+        "list() is not implemented",
+      );
     });
 
     it("default export is the singleton instance", () => {

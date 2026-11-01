@@ -1,64 +1,99 @@
 /**
  * features/tags/TagsService.js
  *
- * Service module for managing content tags in the Laudium Biz application.
- *
- * This module:
- * - Provides functions to fetch, create, update, and delete tags
- * - Supports tag lookup by ID and slug
- * - Interacts with the backend API for tag operations
+ * Tag data access, backed by Supabase.
  */
 
-import api from "@/services/api";
+import { supabase, ok, created, rethrow } from "@/services/supabase.js";
 import { BaseService } from "@/shared/services/BaseService";
 
-/**
- * Fetches all tags
- *
- * @returns {Promise} - Promise that resolves to the list of tags
- */
-export const getTags = () => api.get("/tags");
+const TAG_COLUMNS = "id, name, slug, created_at, updated_at";
 
-/**
- * Fetches a single tag by its ID
- *
- * @param {number|string} id - The tag ID
- * @returns {Promise} - Promise that resolves to the tag data
- */
-export const getTag = (id) => api.get(`/tags/${id}`);
+/** Fetches every tag. */
+export const getTags = async () => {
+  try {
+    const { data, error } = await supabase
+      .from("tags")
+      .select(TAG_COLUMNS)
+      .order("name");
+    if (error) throw error;
+    return ok(data ?? []);
+  } catch (error) {
+    return rethrow(error, "Failed to fetch tags");
+  }
+};
 
-/**
- * Fetches a single tag by its slug
- *
- * @param {string} slug - The tag slug
- * @returns {Promise} - Promise that resolves to the tag data
- */
-export const getTagBySlug = (slug) => api.get(`/tags/slug/${slug}`);
+/** Fetches a single tag by id. */
+export const getTag = async (id) => {
+  try {
+    const { data, error } = await supabase
+      .from("tags")
+      .select(TAG_COLUMNS)
+      .eq("id", id)
+      .maybeSingle();
+    if (error) throw error;
+    return ok(data);
+  } catch (error) {
+    return rethrow(error, "Failed to fetch tag");
+  }
+};
 
-/**
- * Creates a new tag
- *
- * @param {Object} data - The tag data
- * @returns {Promise} - Promise that resolves to the created tag
- */
-export const createTag = (data) => api.post("/tags/create", data);
+/** Fetches a single tag by slug. */
+export const getTagBySlug = async (slug) => {
+  try {
+    const { data, error } = await supabase
+      .from("tags")
+      .select(TAG_COLUMNS)
+      .eq("slug", slug)
+      .maybeSingle();
+    if (error) throw error;
+    return ok(data);
+  } catch (error) {
+    return rethrow(error, "Failed to fetch tag");
+  }
+};
 
-/**
- * Updates an existing tag
- *
- * @param {number|string} id - The tag ID
- * @param {Object} data - The updated tag data
- * @returns {Promise} - Promise that resolves to the updated tag
- */
-export const editTag = (id, data) => api.put(`/tags/${id}`, data);
+/** Creates a tag. */
+export const createTag = async (data) => {
+  try {
+    const { data: newTag, error } = await supabase
+      .from("tags")
+      .insert({ name: data.name, slug: data.slug })
+      .select(TAG_COLUMNS)
+      .single();
+    if (error) throw error;
+    return created(newTag);
+  } catch (error) {
+    return rethrow(error, "Failed to create tag");
+  }
+};
 
-/**
- * Deletes a tag
- *
- * @param {number|string} id - The tag ID
- * @returns {Promise} - Promise that resolves when the tag is deleted
- */
-export const removeTag = (id) => api.delete(`/tags/${id}`);
+/** Updates a tag. */
+export const editTag = async (id, data) => {
+  try {
+    const { data: updated, error } = await supabase
+      .from("tags")
+      .update({ name: data.name, slug: data.slug })
+      .eq("id", id)
+      .select(TAG_COLUMNS)
+      .single();
+    if (error) throw error;
+    return ok(updated);
+  } catch (error) {
+    return rethrow(error, "Failed to update tag");
+  }
+};
+
+/** Deletes a tag. */
+export const removeTag = async (id) => {
+  try {
+    const { error } = await supabase.from("tags").delete().eq("id", id);
+    if (error) throw error;
+    return ok(true);
+  } catch (error) {
+    return rethrow(error, "Failed to delete tag");
+  }
+};
 
 export class TagsService extends BaseService {
   constructor() {
@@ -66,7 +101,6 @@ export class TagsService extends BaseService {
   }
 }
 
-// expose the domain functions as instance methods (they don't use `this`)
 Object.assign(TagsService.prototype, {
   getTags,
   getTag,

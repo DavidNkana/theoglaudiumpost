@@ -1,10 +1,13 @@
 # Backend archive
 
-This directory is intentionally outside the Vercel frontend build path. The
-Spring Boot/MariaDB backend is retained separately and must be deployed on Java
-and MariaDB-capable infrastructure.
+The application backend was replaced by **Supabase** (PostgreSQL, Auth,
+Storage, Row Level Security). The Vue frontend talks to Supabase directly —
+there is no separate application server and no Spring Boot service to deploy.
 
-`source/` is the committed source snapshot. Credential-like values from the
-supplied pipeline properties were replaced with environment placeholders before
-commit. The original supplied archives remain locally here for provenance but
-are ignored by Git.
+The original Spring Boot/MariaDB backend is retained here for provenance only:
+
+- The supplied archives remain locally (untracked) for reference.
+- The committed source snapshot was removed when the backend was retired. It is
+  still available in the Git history of this repository.
+
+The current data model lives in `supabase/migrations/`.

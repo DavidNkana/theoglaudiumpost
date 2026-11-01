@@ -1,80 +1,140 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { callsTo } from "../../../tests/helpers/supabaseMock.js";
 
-vi.mock("@/services/api", () => ({
-  default: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
+const state = vi.hoisted(() => ({
+  tables: {},
+  builders: {},
+  session: null,
+  user: null,
 }));
 
-import api from "@/services/api";
-import dashboardServiceDefault, {
+vi.mock("@/services/supabase.js", async () => {
+  const { buildSupabaseModule } = await import(
+    "../../../tests/helpers/supabaseModuleMock.js"
+  );
+  return buildSupabaseModule(state);
+});
+
+import {
   getStats,
   getArticlesByType,
   getArticlesByCategory,
   getAdByPlacementCTR,
   getArticlesTimeline,
   getBusinessAdSummary,
-  DashboardService,
-  dashboardService,
-} from "@/features/dashboard/DashboardService";
+} from "@/features/dashboard/DashboardService.js";
 
-describe("DashboardService", () => {
-  beforeEach(() => vi.clearAllMocks());
+describe("features/dashboard/DashboardService", () => {
+  beforeEach(reset);
 
-  // Table of every exported domain function: endpoint + the function under test.
-  const fns = [
-    ["getStats", getStats, "/dashboard/stats"],
-    ["getArticlesByType", getArticlesByType, "/dashboard/articles-by-type"],
-    ["getArticlesByCategory", getArticlesByCategory, "/dashboard/articles-by-category"],
-    ["getAdByPlacementCTR", getAdByPlacementCTR, "/dashboard/ads-placement-ctr"],
-    ["getArticlesTimeline", getArticlesTimeline, "/dashboard/articles-timeline"],
-    ["getBusinessAdSummary", getBusinessAdSummary, "/dashboard/business-ad-summary"],
-  ];
+  it("summarises articles and ads", async () => {
+    state.tables.articles = {
+      data: [
+        { id: "a1", status: "published" },
+        { id: "a2", status: "draft" },
+      ],
+      error: null,
+    };
+    state.tables.ads = {
+      data: [
+        { id: "ad1", status: "active" },
+        { id: "ad2", status: "draft" },
+      ],
+      error: null,
+    };
 
-  describe.each(fns)("%s()", (_name, fn, endpoint) => {
-    it("defaults params to {} when called without an argument", () => {
-      const expected = { data: 1 };
-      api.get.mockReturnValue(expected);
-      const result = fn();
-      expect(api.get).toHaveBeenCalledWith(endpoint, { params: {} });
-      expect(result).toBe(expected);
-    });
+    const response = await getStats();
 
-    it("forwards the supplied params object", () => {
-      const params = { from: "2026-01-01", to: "2026-02-01" };
-      const expected = { data: 2 };
-      api.get.mockReturnValue(expected);
-      const result = fn(params);
-      expect(api.get).toHaveBeenCalledWith(endpoint, { params });
-      expect(result).toBe(expected);
-    });
+    expect(response.data.articles.total_articles).toBe(2);
+    expect(response.data.articles.total_published).toBe(1);
+    expect(response.data.ads.total_ads).toBe(2);
+    expect(response.data.ads.active_ads).toBe(1);
   });
 
-  it("DashboardService is a subclass of BaseService bound to the 'dashboard' resource", () => {
-    const svc = new DashboardService();
-    expect(svc.resource).toBe("dashboard");
-    // Inherited BaseService verb uses the resource segment.
-    api.get.mockReturnValue("listed");
-    expect(svc.list({ q: 1 })).toBe("listed");
-    expect(api.get).toHaveBeenCalledWith("/dashboard", { params: { q: 1 } });
+  it("groups articles by type", async () => {
+    state.tables.articles = {
+      data: [
+        { id: "a1", article_type: "top", status: "published", created_at: "2026-01-01" },
+        { id: "a2", article_type: "top", status: "draft", created_at: "2026-01-02" },
+      ],
+      error: null,
+    };
+
+    const response = await getArticlesByType({});
+
+    const top = response.data.find((row) => row.type === "top");
+    expect(top.article_count).toBe(2);
+    expect(top.published_count).toBe(1);
   });
 
-  it("exposes the domain functions on the prototype", () => {
-    const svc = new DashboardService();
-    api.get.mockReturnValue("ok");
-    const result = svc.getStats({ live: true });
-    expect(api.get).toHaveBeenCalledWith("/dashboard/stats", { params: { live: true } });
-    expect(result).toBe("ok");
-    expect(DashboardService.prototype.getArticlesByType).toBe(getArticlesByType);
+  it("groups articles by category", async () => {
+    state.tables.articles = {
+      data: [
+        { id: "a1", category: { id: "c1", name: "Sport" }, created_at: "2026-01-01" },
+        { id: "a2", category: null, created_at: "2026-01-02" },
+      ],
+      error: null,
+    };
+
+    const response = await getArticlesByCategory({});
+
+    expect(response.data[0].category_name).toBe("Sport");
+    expect(response.data[0].article_count).toBe(1);
   });
 
-  it("dashboardService singleton delegates to the domain methods", () => {
-    api.get.mockReturnValue("singleton");
-    const result = dashboardService.getBusinessAdSummary();
-    expect(api.get).toHaveBeenCalledWith("/dashboard/business-ad-summary", { params: {} });
-    expect(result).toBe("singleton");
+  it("reports ad performance per placement", async () => {
+    state.tables.ads = {
+      data: [
+        {
+          id: "ad1",
+          impressions: 100,
+          clicks: 10,
+          created_at: "2026-01-01",
+          placement: { id: "p1", name: "news_articles" },
+        },
+      ],
+      error: null,
+    };
+
+    const response = await getAdByPlacementCTR({});
+
+    expect(response.data[0].ctr).toBe(10);
+    expect(response.data[0].placement_name).toBe("news_articles");
   });
 
-  it("default export is the singleton instance", () => {
-    expect(dashboardServiceDefault).toBe(dashboardService);
-    expect(dashboardServiceDefault).toBeInstanceOf(DashboardService);
+  it("reports daily article counts", async () => {
+    state.tables.articles = {
+      data: [
+        { id: "a1", published_at: "2026-01-01T10:00:00Z", created_at: "2026-01-01" },
+        { id: "a2", published_at: "2026-01-01T12:00:00Z", created_at: "2026-01-01" },
+      ],
+      error: null,
+    };
+
+    const response = await getArticlesTimeline({});
+
+    expect(response.data[0].label).toBe("2026-01-01");
+    expect(response.data[0].count).toBe(2);
+  });
+
+  it("lists the most recent ads", async () => {
+    state.tables.ads = { data: [{ id: "ad1" }], error: null };
+
+    const response = await getBusinessAdSummary({ size: 7 });
+
+    expect(response.data).toHaveLength(1);
+  });
+
+  it("rejects when the query fails", async () => {
+    state.tables.articles = { data: null, error: { message: "denied" } };
+
+    await expect(getStats()).rejects.toThrow("denied");
   });
 });
+
+const reset = () => {
+  state.tables = {};
+  Object.keys(state.builders).forEach((key) => delete state.builders[key]);
+  state.session = null;
+  state.user = null;
+};

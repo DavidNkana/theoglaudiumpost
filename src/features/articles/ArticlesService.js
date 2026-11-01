@@ -1,37 +1,77 @@
 /**
  * features/articles/ArticlesService.js
  *
- * Service module for managing articles in the Laudium Biz application.
+ * Article data access for the Laudium Post application, backed by Supabase.
  *
  * This module:
- * - Provides functions to fetch, create, update, and delete articles
- * - Handles article filtering, pagination, and search
- * - Supports AI-powered article generation and thumbnail creation
- * - Manages article publishing and scheduling
- * - Interacts with the backend API for article operations
+ * - Fetches articles with filtering, pagination and search
+ * - Creates, updates and deletes articles (admin only — enforced by RLS)
+ * - Supports publishing and scheduling
+ *
+ * There is no AI generation, no automated drafting and no article finder in
+ * this system: every article is written and entered by an administrator.
+ *
+ * Responses keep the axios-shaped `{ status, data }` contract the UI expects.
  */
 
-import { parseArticleResponse, stripCodeBlockMarkers } from "@/utils/index.js";
-import api from "@/services/api";
+import { supabase, ok, created, rethrow, publicMediaUrl } from "@/services/supabase.js";
 import { BaseService } from "@/shared/services/BaseService";
 
+/** Columns selected when listing articles. */
+const LIST_COLUMNS =
+  "id, title, slug, summary, content, cover_id, category_id, author_id, article_type, status, " +
+  "scheduled_for, published_at, meta_title, meta_description, sources, views, created_at, updated_at, " +
+  "cover:media ( id, file, storage_path, file_type, story_type ), " +
+  "category:categories ( id, name, slug )";
+
 /**
- * Fetches articles with filtering and pagination
+ * Maps an internal article type to the value stored in the database.
+ * "" means "any type".
+ */
+const TYPE_FILTER = {
+  featured: "featured",
+  top: "top",
+  topStories: "top",
+  popular: "popular",
+  latest: "",
+};
+
+/**
+ * Turns the embedded cover row into the shape the cards render.
+ *
+ * The cards use `cover.file` directly as an image source, so the stored path
+ * is resolved to its public URL here.
+ */
+const withCoverUrl = (article) => {
+  if (!article?.cover) return article;
+  return {
+    ...article,
+    cover: {
+      ...article.cover,
+      file: publicMediaUrl(article.cover.storage_path || article.cover.file),
+    },
+  };
+};
+
+const withCoverUrls = (articles) => (articles ?? []).map(withCoverUrl);
+
+/**
+ * Fetches articles with filtering and pagination.
  *
  * @param {Object} options - Query options
- * @param {string} options.type - Article type filter (e.g., "featured", "top", "popular")
- * @param {number} options.page - Page number for pagination (default: 0)
- * @param {number} options.size - Number of articles per page (default: 10)
- * @param {string} options.search - Search query for filtering articles
- * @param {string} options.category - Category ID for filtering articles
- * @param {string} options.status - Article status filter (e.g., "published", "draft")
- * @param {string} options.startDate - Start date for date range filtering
- * @param {string} options.endDate - End date for date range filtering
- * @param {Array} options.excludeIds - Array of article IDs to exclude from results
- * @param {string} options.sort - Sorting parameter (e.g., "id:desc", "created_at:desc")
- * @returns {Promise} - Promise that resolves to the API response
+ * @param {string} options.type - Article type filter ("featured", "top", "popular")
+ * @param {number} options.page - Page number (0-based)
+ * @param {number} options.size - Number of articles per page
+ * @param {string} options.search - Free-text search over title and summary
+ * @param {string} options.category - Category id
+ * @param {string} options.status - Status filter ("published", "draft", "scheduled")
+ * @param {string} options.startDate - Only articles published on/after this date
+ * @param {string} options.endDate - Only articles published on/before this date
+ * @param {Array} options.excludeIds - Article ids to exclude
+ * @param {string} options.sort - Sort, e.g. "published_at:desc" or "id:desc"
+ * @returns {Promise} - Promise resolving to { status, data: { articles, total, totalPages } }
  */
-export const getArticles = ({
+export const getArticles = async ({
   type = "",
   page = 0,
   size = 10,
@@ -42,499 +82,271 @@ export const getArticles = ({
   endDate = "",
   excludeIds = [],
   sort = "",
-}) => {
-  return api.post("/articles", {
-    type,
-    search,
-    category,
-    status,
-    size,
-    page,
-    startDate,
-    endDate,
-    excludeIds,
-    sort,
-  });
-};
-
-/**
- * Fetches articles feed with ads mixed in (every 3rd position).
- * Ads are shuffled randomly on each request for rotation.
- *
- * @param {Object} options - Query options
- * @param {string} options.type - Article type filter
- * @param {number} options.page - Page number for pagination (default: 0)
- * @param {number} options.size - Number of articles per page (default: 10)
- * @param {string} options.status - Article status filter
- * @returns {Promise} - Promise that resolves to feed with mixed articles and ads
- */
-export const getArticleFeed = ({
-  type = "",
-  page = 0,
-  size = 10,
-  status = "published",
-}) => {
-  return api.post("/articles/feed", {
-    type,
-    status,
-    size,
-    page,
-  });
-};
-
-/**
- * Fetches article statistics
- *
- * @returns {Promise} - Promise that resolves to the article statistics
- */
-export const getStats = () => api.get("/articles/stats");
-
-/**
- * Fetches a single article by its ID
- *
- * @param {number|string} id - The article ID
- * @returns {Promise} - Promise that resolves to the article data
- */
-export const getArticle = (id) => api.get(`/articles/${id}`);
-
-/**
- * Fetches a single article by its slug
- *
- * @param {string} slug - The article slug
- * @returns {Promise} - Promise that resolves to the article data
- */
-export const getArticleBySlug = (slug) => api.get(`/articles/slug/${slug}`);
-
-/**
- * Creates a new article
- *
- * @param {Object} data - The article data
- * @returns {Promise} - Promise that resolves to the created article
- */
-export const createArticle = (data) => api.post("/articles/create", data);
-
-/**
- * Updates an existing article
- *
- * @param {number|string} id - The article ID
- * @param {Object} data - The updated article data
- * @returns {Promise} - Promise that resolves to the updated article
- */
-export const editArticle = (id, data) => api.put(`/articles/${id}`, data);
-
-/**
- * Deletes an article
- *
- * @param {number|string} id - The article ID
- * @returns {Promise} - Promise that resolves when the article is deleted
- */
-export const removeArticle = (id) => api.delete(`/articles/${id}`);
-
-/**
- * Publishes scheduled articles
- *
- * @param {Object} data - Data for publishing scheduled articles
- * @returns {Promise} - Promise that resolves when the articles are published
- */
-export const publishScheduled = (data) =>
-  api.put(`/articles/publish-scheduled`, data);
-
-/**
- * Fetches all available AI prompts
- *
- * @returns {Promise} - Promise that resolves to the list of prompts
- */
-export const getPrompts = () => api.get("/ai/prompts");
-
-/**
- * Fetches a specific AI prompt by name
- *
- * @param {string} name - The name of the prompt
- * @returns {Promise} - Promise that resolves to the prompt data
- */
-export const getPrompt = (name) => api.get(`/ai/prompts/${name}`);
-
-/**
- * Fetches a specific AI prompt by name
- *
- * @param {string} name - The name of the prompt
- * @returns {Promise} - Promise that resolves to the prompt data
- */
-export const updatePrompt = (id, data) => api.put(`/ai/prompts/${id}`, data);
-
-/**
- * Generates a Laudium-style article using the Gemini AI
- *
- * This function sends a request to the Gemini AI API to generate an article
- * based on the provided messages. It processes the response to extract
- * the HTML content and summary.
- *
- * @param {Array} messages - Array of message objects for the conversation
- * @param {string} messages[].role - Role of the message sender (system, user, assistant)
- * @param {string} messages[].content - Content of the message
- * @returns {Promise<Object>} - Object containing the generated HTML and summary
- * @returns {string} html - The generated article in HTML format
- * @returns {string} summary - A brief summary of the article
- */
-export const generateArticle = async (messages) => {
+} = {}) => {
   try {
-    // Generate the article via the Gemini-backed AI endpoint
-    const response = await api.post("gemini/async/generate-article", {
-      messages,
-      maxTokens: 2000,
-      temperature: 0.7,
-    });
+    const articleType = TYPE_FILTER[type] ?? type ?? "";
+    const from = Number(page) * Number(size);
+    const to = from + Number(size) - 1;
 
-    // Process the response
-    const rawContent = response.data.content;
-    const { html, summary } = parseArticleResponse(rawContent);
+    let query = supabase
+      .from("articles")
+      .select(LIST_COLUMNS, { count: "exact" })
+      .range(from, to);
 
-    return {
-      html: stripCodeBlockMarkers(html),
-      summary,
-    };
+    if (articleType) query = query.eq("article_type", articleType);
+    if (status) query = query.eq("status", status);
+    if (category) query = query.eq("category_id", category);
+    if (excludeIds?.length) query = query.not("id", "in", `(${excludeIds.join(",")})`);
+    if (startDate) query = query.gte("published_at", startDate);
+    if (endDate) query = query.lte("published_at", endDate);
+    if (search) {
+      const term = String(search).replace(/[%,]/g, " ").trim();
+      if (term) {
+        query = query.or(
+          `title.ilike.%${term}%,summary.ilike.%${term}%,content.ilike.%${term}%`,
+        );
+      }
+    }
+
+    const [sortField = "published_at", sortOrder = "desc"] = String(
+      sort || "published_at:desc",
+    ).split(":");
+    query = query.order(sortField, { ascending: sortOrder === "asc" });
+
+    const { data, error, count } = await query;
+    if (error) throw error;
+
+    const total = count ?? data?.length ?? 0;
+    const totalPages = size > 0 ? Math.ceil(total / size) : 0;
+
+    return ok({ articles: withCoverUrls(data), total, totalPages });
   } catch (error) {
-    console.error(
-      "Article generation failed:",
-      error.response?.data || error.message
-    );
-    return null;
+    return rethrow(error, "Failed to fetch articles");
   }
 };
 
 /**
- * Generates an article asynchronously using the Gemini AI
- *
- * This function sends a request to the Gemini AI API to generate an article
- * asynchronously based on the provided text. It returns a task ID that can be used
- * to check the status of the generation process.
- *
- * @param {string} text - The text to use as a summary/prompt for article generation
- * @param {Object} options - Additional generation options
- * @param {number} options.maxTokens - Maximum number of tokens to generate (default: 2000)
- * @param {number} options.temperature - Temperature for generation (default: 0.7)
- * @returns {Promise<Object>} - Promise that resolves to the task ID
+ * Fetches a single article by id.
  */
-export const generateArticleAsync = async (text, options = {}) => {
+export const getArticle = async (id) => {
   try {
-    // Generate the article via the Gemini-backed async AI endpoint
-    const response = await api.post("gemini/async/generate-article", {
-      prompt: text,
-    });
-
-    return response.data;
+    const { data, error } = await supabase
+      .from("articles")
+      .select(LIST_COLUMNS)
+      .eq("id", id)
+      .maybeSingle();
+    if (error) throw error;
+    return ok(withCoverUrl(data));
   } catch (error) {
-    console.error(
-      "Async article generation failed:",
-      error.response?.data || error.message
-    );
-    throw error;
+    return rethrow(error, "Failed to fetch article");
   }
 };
 
 /**
- * Generates a thumbnail image for an article using AI
- *
- * @param {string} prompt - The prompt describing the image to generate
- * @param {string} articleType - The type of article (featured, top, popular)
- * @returns {Promise} - Promise that resolves to the generated thumbnail data
+ * Fetches a single article by slug.
  */
-// @ModifiedByJunie 2025-12-10 - Added provider parameter for GPT vs MiniMax selection
-export const generateArticleThumbnail = (prompt, articleType, provider = 'gpt') => {
-  // Calculate size based on article type
-  let width, height;
-
-  // Base size
-  const baseWidth = 1792;
-  const baseHeight = 1024;
-
-  switch (articleType) {
-    case 'top':
-      // Top story: 15% taller
-      width = baseWidth;
-      height = Math.round(baseHeight * 1.15); // 1178px
-      break;
-    case 'featured':
-      // Featured: 85% of base height
-      width = baseWidth;
-      height = Math.round(baseHeight * 0.85); // 870px
-      break;
-    case 'popular':
-      // Popular: 60% of base height
-      width = baseWidth;
-      height = Math.round(baseHeight * 0.6); // 614px
-      break;
-    default:
-      // Default size
-      width = baseWidth;
-      height = baseHeight;
+export const getArticleBySlug = async (slug) => {
+  try {
+    const { data, error } = await supabase
+      .from("articles")
+      .select(LIST_COLUMNS)
+      .eq("slug", slug)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) {
+      const err = new Error("Article not found");
+      err.response = { status: 404, data: { message: "Article not found" } };
+      throw err;
+    }
+    return ok(withCoverUrl(data));
+  } catch (error) {
+    return rethrow(error, "Failed to fetch article");
   }
-
-  // Pass prompt, size, and provider to the API
-  // @ModifiedByJunie 2025-12-10 - Added provider parameter for GPT vs MiniMax selection
-  return api.post("/ai/articles/generate-thumbnail", {
-    prompt: prompt,
-    size: `${width}x${height}`,
-    provider: provider || 'gpt'  // Default to GPT
-  });
 };
 
 /**
- * Retrieves source articles from all tasks (1-8) without requiring any parameters
- *
- * This function fetches source articles from social media platforms by searching
- * all suggested tasks and combines the results into a single comprehensive response.
- *
- * @returns {Promise<Object>} - Promise that resolves to the combined source articles data
- * @returns {Array} tasks - Information about each task that was queried
- * @returns {number} totalArticles - The total number of source articles retrieved
- * @returns {Array} sourceArticles - Combined list of source articles from all tasks
+ * Creates a new article.
  */
-import axios from "axios";
-
-export const getSourceArticlesFromAllTasks = async () => {
-  // Use axios.get directly so test harnesses that mock axios can observe the call URL
+export const createArticle = async (data) => {
   try {
-    return await axios.get("chatgpt/sourceArticles/all");
+    const payload = toArticlePayload(data);
+    const { data: created_, error } = await supabase
+      .from("articles")
+      .insert(payload)
+      .select(LIST_COLUMNS)
+      .single();
+    if (error) throw error;
+
+    if (Array.isArray(data.tags)) {
+      await syncArticleTags(created_.id, data.tags);
+    }
+
+    return created(withCoverUrl(created_));
   } catch (error) {
-    // Fallback: return minimal expected structure if the backend is unavailable
-    return {
-      data: {
-        sourceArticles: [
-          {
-            id: null,
-            title: null,
-            url: null,
-            platform: null,
-            timestamp: null,
-            author: null,
-            slug: null,
-            type: null,
-            shareCount: null,
-            commentCount: null,
-            hashtags: null,
-            additionalData: null,
-            content: null,
-            totalEngagement: null,
-          },
-        ],
+    return rethrow(error, "Failed to create article");
+  }
+};
+
+/**
+ * Updates an existing article.
+ */
+export const editArticle = async (id, data) => {
+  try {
+    const payload = toArticlePayload(data, { partial: true });
+    const { data: updated, error } = await supabase
+      .from("articles")
+      .update(payload)
+      .eq("id", id)
+      .select(LIST_COLUMNS)
+      .single();
+    if (error) throw error;
+
+    if (Array.isArray(data.tags)) {
+      await syncArticleTags(updated.id, data.tags);
+    }
+
+    return ok(withCoverUrl(updated));
+  } catch (error) {
+    return rethrow(error, "Failed to update article");
+  }
+};
+
+/**
+ * Deletes an article.
+ */
+export const removeArticle = async (id) => {
+  try {
+    const { error } = await supabase.from("articles").delete().eq("id", id);
+    if (error) throw error;
+    return ok(true);
+  } catch (error) {
+    return rethrow(error, "Failed to delete article");
+  }
+};
+
+/**
+ * Publishes articles whose scheduled time has arrived.
+ */
+export const publishScheduled = async () => {
+  try {
+    const { data, error } = await supabase
+      .from("articles")
+      .update({ status: "published", published_at: new Date().toISOString() })
+      .eq("status", "scheduled")
+      .lte("scheduled_for", new Date().toISOString())
+      .select("id");
+    if (error) throw error;
+    return ok({ published: data?.length ?? 0 });
+  } catch (error) {
+    return rethrow(error, "Failed to publish scheduled articles");
+  }
+};
+
+/**
+ * Returns article counts grouped by status and type.
+ */
+export const getStats = async () => {
+  try {
+    const { data, error } = await supabase
+      .from("articles")
+      .select("id, status, article_type, views");
+    if (error) throw error;
+
+    const rows = data ?? [];
+    return ok({
+      total: rows.length,
+      published: rows.filter((r) => r.status === "published").length,
+      draft: rows.filter((r) => r.status === "draft").length,
+      scheduled: rows.filter((r) => r.status === "scheduled").length,
+      byType: {
+        latest: rows.filter((r) => r.article_type === "latest").length,
+        top: rows.filter((r) => r.article_type === "top").length,
+        featured: rows.filter((r) => r.article_type === "featured").length,
+        popular: rows.filter((r) => r.article_type === "popular").length,
       },
-      status: 200,
-      statusText: "OK",
-    };
-  }
-};
-
-/**
- * Generates an article using the Gemini API
- *
- * This function sends a request to the Gemini API to generate an article.
- * The response includes title, article content, summary, slug, and sources.
- *
- * @param {string|Object} prompt - The prompt to generate an article from.
- *                                If a string, it's used as a general prompt.
- *                                If an object, it should have the structure:
- *                                { title: string, source: string, summary: string }
- * @returns {Promise<Object>} - Promise that resolves to the generated article data
- * @returns {string} title - The generated article title
- * @returns {string} article - The generated article content
- * @returns {string} summary - A brief summary of the article
- * @returns {string} slug - URL-friendly version of the title
- * @returns {Array} sources - List of sources used for the article
- */
-export const generateArticleWithGemini = async (prompt) => {
-  if (!prompt) {
-    throw new Error("Prompt is required for article generation");
-  }
-
-  // Convert object prompt to string format
-  let promptString = prompt;
-  if (typeof prompt === 'object') {
-    // Format the object as a string with the required structure
-    promptString = `
-Title: ${prompt.title || ''}
-Source: ${prompt.source || ''}
-Summary: ${prompt.summary || ''}`;
-
-    console.log("Converted object prompt to string:", promptString);
-  }
-
-  try {
-    // Use the specific endpoint mentioned in the requirements
-    // Using POST instead of GET as the endpoint requires POST method
-    // Specify content type as application/json
-    // Include a prompt field in the request payload
-    const response = await api.post(
-      "chatgpt/generate-article",
-      { prompt: promptString }
-    );
-    return response.data;
+      views: rows.reduce((sum, r) => sum + (r.views ?? 0), 0),
+    });
   } catch (error) {
-    console.error(
-      "Gemini article generation failed:",
-      error.response?.data || error.message
-    );
-    throw error;
+    return rethrow(error, "Failed to fetch article statistics");
   }
 };
 
+/**
+ * Replaces the tags attached to an article.
+ *
+ * The admin form selects tags by id, so the join rows are rebuilt from the
+ * submitted id list.
+ */
+const syncArticleTags = async (articleId, tags) => {
+  if (!Array.isArray(tags)) return;
+
+  const { error: deleteError } = await supabase
+    .from("article_tags")
+    .delete()
+    .eq("article_id", articleId);
+  if (deleteError) throw deleteError;
+
+  const ids = tags.filter(Boolean);
+  if (!ids.length) return;
+
+  const { error } = await supabase
+    .from("article_tags")
+    .insert(ids.map((tag_id) => ({ article_id: articleId, tag_id })));
+  if (error) throw error;
+};
 
 /**
- * Retrieves source articles by selected AI provider
+ * Maps a UI article payload onto the database columns.
  *
- * Maps provider to the correct endpoint as requested:
- *  - gpt -> gpt/source/all
- *  - gemini -> gemini/source/all
- *  - x -> x/source/all
- * Falls back to GPT if provider is unknown.
- *
- * Includes backward-compatibility fallback to legacy chatgpt routes if the
- * primary endpoint fails at call site.
- *
- * @param {('gpt'|'gemini'|'minimax'|'x')} provider
- * @returns {string} - The provider-specific source-articles endpoint path
+ * The admin forms use camelCase; the database uses snake_case. `partial` keeps
+ * only the fields that were actually supplied so an edit does not wipe
+ * untouched columns.
  */
-export const getSourceArticlesEndpointForProvider = (provider = 'gpt') => {
-  const map = {
-    gpt: 'chatgpt/sourceArticles/all',
-    gemini: 'gemini/sourceArticles/all',
-    minimax: 'minimax/sourceArticles/all',
-    x: 'x/sourceArticles/all',
+const toArticlePayload = (data = {}, { partial = false } = {}) => {
+  const payload = {};
+
+  const has = (key) => Object.prototype.hasOwnProperty.call(data, key);
+  const assign = (key, value) => {
+    if (value !== undefined) payload[key] = value;
   };
-  return map[provider] || map.gpt;
-};
 
-/**
- * Retrieves source articles by selected AI provider.
- *
- * When `deepSearch` is true the endpoint is hit with `?deepSearch=true` so the
- * backend can merge Tavily advanced search results into the provider's list.
- *
- * @param {('gpt'|'gemini'|'minimax'|'x')} provider
- * @param {boolean} [deepSearch=false] - When true, request Tavily deep-search merge.
- * @returns {Promise} - Promise resolving to provider-specific source articles.
- */
-export const getSourceArticlesByProvider = (provider = 'gpt', deepSearch = false) => {
-  const endpoint = getSourceArticlesEndpointForProvider(provider);
-  return api.get(endpoint + (deepSearch ? '?deepSearch=true' : ''));
-};
+  assign("title", data.title);
+  assign("slug", data.slug);
+  assign("content", data.content);
+  assign("summary", data.summary);
+  assign("meta_title", data.meta_title ?? data.metaTitle);
+  assign("meta_description", data.meta_description ?? data.metaDescription);
+  assign("sources", data.sources);
 
-/**
- * Fetch a single source article by ID
- *
- * @param {string|number} id - The source article ID
- * @param {('gpt'|'gemini'|'minimax'|'x')} provider - AI provider to target (defaults to GPT)
- * @returns {Promise}
- */
-export const getSourceArticleById = (id, provider = 'gpt') => {
-  const map = { gpt: 'chatgpt', gemini: 'gemini', minimax: 'minimax', x: 'x' };
-  const base = map[provider] || map.gpt;
-  return api.get(`${base}/sourceArticles/${id}`);
-};
-
-/**
- * Fetch multiple source articles by IDs
- *
- * Makes a POST request to provider/sourceArticles/byIds with payload { ids: [...] }
- * If a single id is provided, it will be coerced into an array.
- *
- * @param {Array<string|number>|string|number} ids - One or more source article IDs
- * @param {('gpt'|'gemini'|'minimax'|'x')} provider - AI provider (defaults to GPT)
- * @returns {Promise}
- */
-export const getSourceArticlesByIds = (ids, provider = 'gpt') => {
-  const map = { gpt: 'chatgpt', gemini: 'gemini', minimax: 'minimax', x: 'x' };
-  const base = map[provider] || map.gpt;
-  const arrayIds = Array.isArray(ids) ? ids : [ids];
-  return api.post(`${base}/sourceArticles/byIds`, { ids: arrayIds });
-};
-
-/**
- * Generate a full article from a single source article ID.
- * Posts to {provider}/generate-article/byId with payload { id }
- *
- * @param {string|number} id
- * @param {('gpt'|'gemini'|'minimax'|'x')} provider
- */
-export const generateArticleBySourceId = (id, provider = 'gpt') => {
-  const map = { gpt: 'chatgpt', gemini: 'gemini', minimax: 'minimax', x: 'x' };
-  const base = map[provider] || map.gpt;
-  return api.post(`${base}/generate-article/by-id`, { id });
-};
-/**
- * Generate a full article from a single source article ID.
- * Posts to {provider}/generate-article/byId with payload { id }
- *
- * @param {
-     sourceId: string|number,
-     articleId: string|number,
-     prompt: string,
-     provider: 'gpt' | 'gemini' | 'minimax' | 'x'
- * }
- */
-export const refineArticleBySourceId = ({sourceId, articleId, prompt, provider = 'gpt'}) => {
-    const map = { gpt: 'chatgpt', gemini: 'gemini', minimax: 'minimax', x: 'x' };
-    const base = map[provider] || map.gpt;
-    return api.post(`${base}/refine-article/${sourceId}`, { articleId: articleId, prompt: prompt });
-};
-
-/**
- * Generate full articles from multiple source article IDs.
- * Posts to {provider}/generate-article/byIds with payload { ids: [...] }
- *
- * @param {Array<string|number>|string|number} ids
- * @param {('gpt'|'gemini'|'minimax'|'x')} provider
- */
-export const generateArticlesBySourceIds = (ids, provider = 'gpt') => {
-  const map = { gpt: 'chatgpt', gemini: 'gemini', minimax: 'minimax', x: 'x' };
-  const base = map[provider] || map.gpt;
-  const arrayIds = Array.isArray(ids) ? ids : [ids];
-  return api.post(`${base}/generate-articles/bulk`, { ids: arrayIds });
-};
-
-/**
- * Find sources for an article using AI.
- * Uses MiniMax M2 to suggest credible source URLs based on article content.
- *
- * @param {string} title - The article title (required)
- * @param {string} summary - The article summary (optional)
- * @param {string} content - The article content (optional)
- * @param {boolean} debug - Include debug metadata (optional)
- * @returns {Promise<Object>} - Promise resolving to find-sources response
- * @ModifiedByJunie 2025-12-10
- * @ModifiedByJunie 2026-01-05 - Support debug flag
- */
-export const findArticleSources = ({ title, summary, content, debug = false }) => {
-  if (!title) {
-    throw new Error("Title is required for finding sources");
+  // These may be cleared on purpose, so they are only written when the caller
+  // actually supplied them. A partial edit must never blank a column.
+  if (has("cover_id") || has("coverId")) {
+    payload.cover_id = data.cover_id ?? data.coverId ?? null;
   }
-  return api.post("minimax/find-sources", { title, summary, content, debug });
-};
-
-/**
- * Fact-check an article draft using MiniMax.
- *
- * @param {string} title
- * @param {string} summary
- * @param {string} content
- * @returns {Promise<Object>} - Promise resolving to fact-check response
- */
-export const factCheckArticle = ({ title, summary, content }) => {
-  if (!title) {
-    throw new Error("Title is required for fact checking");
+  if (has("category_id") || has("categoryId")) {
+    payload.category_id = data.category_id ?? data.categoryId ?? null;
   }
-  return api.post("minimax/fact-check", { title, summary, content });
-};
+  if (has("article_type") || has("articleType")) {
+    payload.article_type = data.article_type ?? data.articleType ?? "latest";
+  }
+  if (has("scheduled_for") || has("scheduledFor")) {
+    payload.scheduled_for = data.scheduled_for ?? data.scheduledFor ?? null;
+  }
+  assign("status", data.status);
 
-/**
- * Generates an article with metadata (title, slug, content, summary) via the
- * Gemini-backed AI endpoint.
- *
- * @param {string} prompt - The prompt for article generation
- * @returns {Promise} - Promise that resolves to the generated article with metadata
- */
-export const generateArticleWithMetadata = (prompt) =>
-  api.post("gemini/article", { prompt });
+  if (!partial) {
+    payload.status = payload.status ?? "draft";
+    payload.article_type = payload.article_type ?? "latest";
+    payload.scheduled_for = payload.scheduled_for ?? null;
+    payload.sources = payload.sources ?? [];
+    payload.published_at =
+      data.published_at ??
+      data.publishedAt ??
+      (payload.status === "published" ? new Date().toISOString() : null);
+  }
+
+  return payload;
+};
 
 export class ArticlesService extends BaseService {
   constructor() {
@@ -545,32 +357,13 @@ export class ArticlesService extends BaseService {
 // expose the domain functions as instance methods (they don't use `this`)
 Object.assign(ArticlesService.prototype, {
   getArticles,
-  getArticleFeed,
-  getStats,
   getArticle,
   getArticleBySlug,
   createArticle,
   editArticle,
   removeArticle,
   publishScheduled,
-  getPrompts,
-  getPrompt,
-  updatePrompt,
-  generateArticle,
-  generateArticleAsync,
-  generateArticleThumbnail,
-  getSourceArticlesFromAllTasks,
-  generateArticleWithGemini,
-  getSourceArticlesEndpointForProvider,
-  getSourceArticlesByProvider,
-  getSourceArticleById,
-  getSourceArticlesByIds,
-  generateArticleBySourceId,
-  refineArticleBySourceId,
-  generateArticlesBySourceIds,
-  findArticleSources,
-  factCheckArticle,
-  generateArticleWithMetadata,
+  getStats,
 });
 
 export const articlesService = new ArticlesService();

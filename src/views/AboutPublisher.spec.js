@@ -33,7 +33,7 @@ describe("AboutPublisher.vue", () => {
       "Publisher and Editorial Contact",
       "Corrections and Feedback",
       "Privacy",
-      "AI-Generated Content Disclosure",
+      "Editorial Standards",
     ]);
   });
 
@@ -63,10 +63,11 @@ describe("AboutPublisher.vue", () => {
     expect(links[1].text()).toBe("Privacy Policy");
   });
 
-  it("discloses AI-assisted content usage", () => {
+  it("states that articles are written by the editorial team", () => {
     const wrapper = mountAbout();
 
-    expect(wrapper.text()).toContain("AI-Generated Content Disclosure");
-    expect(wrapper.text()).toContain("ChatGPT and Google Gemini");
+    expect(wrapper.text()).toContain("Editorial Standards");
+    expect(wrapper.text()).toContain("written and entered by our own editorial team");
+    expect(wrapper.text()).not.toContain("ChatGPT");
   });
 });

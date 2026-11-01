@@ -1,10 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { callsTo } from "../../../tests/helpers/supabaseMock.js";
 
-vi.mock("@/services/api", () => ({
-  default: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
+const state = vi.hoisted(() => ({
+  tables: {},
+  builders: {},
+  session: null,
+  user: null,
 }));
 
-import api from "@/services/api";
+vi.mock("@/services/supabase.js", async () => {
+  const { buildSupabaseModule } = await import(
+    "../../../tests/helpers/supabaseModuleMock.js"
+  );
+  return buildSupabaseModule(state);
+});
+
 import {
   getTags,
   getTag,
@@ -12,88 +22,70 @@ import {
   createTag,
   editTag,
   removeTag,
-  TagsService,
-  tagsService,
-} from "@/features/tags/TagsService";
-import defaultExport from "@/features/tags/TagsService";
+} from "@/features/tags/TagsService.js";
 
-describe("TagsService", () => {
-  beforeEach(() => vi.clearAllMocks());
+describe("features/tags/TagsService", () => {
+  beforeEach(reset);
 
-  it("getTags() fetches the tags collection", () => {
-    const resp = { data: [{ id: 1 }] };
-    api.get.mockReturnValue(resp);
-    expect(getTags()).toBe(resp);
-    expect(api.get).toHaveBeenCalledWith("/tags");
+  it("lists tags", async () => {
+    state.tables.tags = { data: [{ id: "t1", name: "Sport" }], error: null };
+
+    const response = await getTags();
+
+    expect(response.status).toBe(200);
+    expect(response.data).toHaveLength(1);
   });
 
-  it("getTag() fetches a single tag by id", () => {
-    const resp = { data: { id: 5 } };
-    api.get.mockReturnValue(resp);
-    expect(getTag(5)).toBe(resp);
-    expect(api.get).toHaveBeenCalledWith("/tags/5");
+  it("fetches a tag by id", async () => {
+    state.tables.tags = { data: { id: "t1", name: "Sport" }, error: null };
+
+    const response = await getTag("t1");
+
+    expect(response.data.name).toBe("Sport");
   });
 
-  it("getTagBySlug() fetches a tag by slug", () => {
-    const resp = { data: { slug: "news" } };
-    api.get.mockReturnValue(resp);
-    expect(getTagBySlug("news")).toBe(resp);
-    expect(api.get).toHaveBeenCalledWith("/tags/slug/news");
+  it("fetches a tag by slug", async () => {
+    state.tables.tags = { data: { id: "t1", name: "Sport" }, error: null };
+
+    const response = await getTagBySlug("sport");
+
+    expect(response.data.id).toBe("t1");
   });
 
-  it("createTag() posts the new tag data", () => {
-    const payload = { name: "New" };
-    const resp = { data: { id: 9 } };
-    api.post.mockReturnValue(resp);
-    expect(createTag(payload)).toBe(resp);
-    expect(api.post).toHaveBeenCalledWith("/tags/create", payload);
+  it("creates a tag", async () => {
+    state.tables.tags = { data: { id: "t1", name: "Sport" }, error: null };
+
+    const response = await createTag({ name: "Sport", slug: "sport" });
+
+    expect(response.status).toBe(201);
   });
 
-  it("editTag() puts the updated tag data", () => {
-    const payload = { name: "Edited" };
-    const resp = { data: { id: 3 } };
-    api.put.mockReturnValue(resp);
-    expect(editTag(3, payload)).toBe(resp);
-    expect(api.put).toHaveBeenCalledWith("/tags/3", payload);
+  it("updates a tag", async () => {
+    state.tables.tags = { data: { id: "t1", name: "Sport" }, error: null };
+
+    const response = await editTag("t1", { name: "Sport", slug: "sport" });
+
+    expect(response.status).toBe(200);
   });
 
-  it("removeTag() deletes the tag by id", () => {
-    const resp = { data: {} };
-    api.delete.mockReturnValue(resp);
-    expect(removeTag(4)).toBe(resp);
-    expect(api.delete).toHaveBeenCalledWith("/tags/4");
+  it("removes a tag", async () => {
+    state.tables.tags = { data: null, error: null };
+
+    const response = await removeTag("t1");
+
+    expect(response.status).toBe(200);
   });
 
-  it("TagsService constructs with the 'tags' resource and shared client", () => {
-    const svc = new TagsService();
-    expect(svc).toBeInstanceOf(TagsService);
-    expect(svc.resource).toBe("tags");
-    expect(svc.api).toBe(api);
-  });
+  it("rejects when the query fails", async () => {
+    state.tables.tags = { data: null, error: { message: "denied" } };
 
-  it("exposes the domain functions as instance methods", () => {
-    expect(tagsService.getTags).toBe(getTags);
-    expect(tagsService.getTag).toBe(getTag);
-    expect(tagsService.getTagBySlug).toBe(getTagBySlug);
-    expect(tagsService.createTag).toBe(createTag);
-    expect(tagsService.editTag).toBe(editTag);
-    expect(tagsService.removeTag).toBe(removeTag);
-  });
-
-  it("singleton delegates getTags to the api client", () => {
-    api.get.mockReturnValue({ data: [] });
-    tagsService.getTags();
-    expect(api.get).toHaveBeenCalledWith("/tags");
-  });
-
-  it("default export is the singleton instance", () => {
-    expect(defaultExport).toBe(tagsService);
-    expect(defaultExport).toBeInstanceOf(TagsService);
-  });
-
-  it("singleton still has the inherited BaseService REST verbs", () => {
-    api.get.mockReturnValue({ data: {} });
-    tagsService.get(11);
-    expect(api.get).toHaveBeenCalledWith("/tags/11");
+    await expect(getTags()).rejects.toThrow("denied");
   });
 });
+
+const reset = () => {
+  state.tables = {};
+  Object.keys(state.builders).forEach((key) => delete state.builders[key]);
+  state.session = null;
+  state.user = null;
+};

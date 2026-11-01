@@ -1,30 +1,129 @@
 /**
- * PURPOSE: Service for campaigns API - fetching and creating advertising campaigns
- * Used by ad forms to associate ads with campaigns
+ * features/ads/CampaignService.js
+ *
+ * Campaign data access, backed by Supabase.
+ *
+ * A campaign groups the ads an administrator has entered for one customer.
  */
-import api from "@/services/api";
+
+import { supabase, ok, created, rethrow } from "@/services/supabase.js";
 import { BaseService } from "@/shared/services/BaseService";
 
-const path = "campaigns";
+const CAMPAIGN_COLUMNS =
+  "id, name, business_id, status, payment_status, start_date, end_date, budget, created_at, updated_at";
 
-export const getCampaigns = ({
+/**
+ * Fetches campaigns with filtering and pagination.
+ */
+export const getCampaigns = async ({
   page = 0,
   size = 100,
   search = "",
   status = "",
   payment_status = "",
-} = {}) =>
-  api.get(
-    `${path}?search=${search}&status=${status}&payment_status=${payment_status}&size=${size}&page=${page}`
-  );
+} = {}) => {
+  try {
+    const from = Number(page) * Number(size);
+    const to = from + Number(size) - 1;
 
-export const getCampaign = (id) => api.get(`${path}/${id}`);
+    let query = supabase
+      .from("campaigns")
+      .select(CAMPAIGN_COLUMNS, { count: "exact" })
+      .range(from, to);
 
-export const createCampaign = (data) => api.post(`${path}/create`, data);
+    if (status) query = query.eq("status", status);
+    if (payment_status) query = query.eq("payment_status", payment_status);
+    if (search) {
+      const term = String(search).replace(/[%,]/g, " ").trim();
+      if (term) query = query.or(`name.ilike.%${term}%`);
+    }
 
-export const editCampaign = (id, data) => api.put(`${path}/${id}`, data);
+    query = query.order("created_at", { ascending: false });
 
-export const deleteCampaign = (id) => api.delete(`${path}/${id}`);
+    const { data, error, count } = await query;
+    if (error) throw error;
+
+    const total = count ?? data?.length ?? 0;
+    const totalPages = Number(size) > 0 ? Math.ceil(total / Number(size)) : 0;
+
+    return ok({ campaigns: data ?? [], total, totalPages });
+  } catch (error) {
+    return rethrow(error, "Failed to fetch campaigns");
+  }
+};
+
+/** Fetches a single campaign. */
+export const getCampaign = async (id) => {
+  try {
+    const { data, error } = await supabase
+      .from("campaigns")
+      .select(CAMPAIGN_COLUMNS)
+      .eq("id", id)
+      .maybeSingle();
+    if (error) throw error;
+    return ok(data);
+  } catch (error) {
+    return rethrow(error, "Failed to fetch campaign");
+  }
+};
+
+/** Creates a campaign. */
+export const createCampaign = async (data) => {
+  try {
+    const { data: newCampaign, error } = await supabase
+      .from("campaigns")
+      .insert({
+        name: data.name,
+        business_id: data.business_id ?? data.businessId ?? null,
+        status: data.status ?? "active",
+        payment_status: data.payment_status ?? data.paymentStatus ?? null,
+        start_date: data.start_date ?? data.startTime ?? null,
+        end_date: data.end_date ?? data.endTime ?? null,
+        budget: data.budget ?? data.amount ?? 0,
+      })
+      .select(CAMPAIGN_COLUMNS)
+      .single();
+    if (error) throw error;
+    return created(newCampaign);
+  } catch (error) {
+    return rethrow(error, "Failed to create campaign");
+  }
+};
+
+/** Updates a campaign. */
+export const editCampaign = async (id, data) => {
+  try {
+    const { data: updated, error } = await supabase
+      .from("campaigns")
+      .update({
+        name: data.name,
+        business_id: data.business_id ?? data.businessId ?? null,
+        status: data.status ?? "active",
+        payment_status: data.payment_status ?? data.paymentStatus ?? null,
+        start_date: data.start_date ?? data.startTime ?? null,
+        end_date: data.end_date ?? data.endTime ?? null,
+        budget: data.budget ?? data.amount ?? 0,
+      })
+      .eq("id", id)
+      .select(CAMPAIGN_COLUMNS)
+      .single();
+    if (error) throw error;
+    return ok(updated);
+  } catch (error) {
+    return rethrow(error, "Failed to update campaign");
+  }
+};
+
+/** Deletes a campaign. */
+export const deleteCampaign = async (id) => {
+  try {
+    const { error } = await supabase.from("campaigns").delete().eq("id", id);
+    if (error) throw error;
+    return ok(true);
+  } catch (error) {
+    return rethrow(error, "Failed to delete campaign");
+  }
+};
 
 export class CampaignService extends BaseService {
   constructor() {
@@ -32,7 +131,6 @@ export class CampaignService extends BaseService {
   }
 }
 
-// expose the domain functions as instance methods (they don't use `this`)
 Object.assign(CampaignService.prototype, {
   getCampaigns,
   getCampaign,

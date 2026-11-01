@@ -1,34 +1,25 @@
 /**
  * features/announcements/AnnouncementsService.js
  *
- * Service module for managing community announcements/notices in the Laudium Biz application.
- *
- * This module:
- * - Provides functions to fetch, create, update, and delete announcements
- * - Handles announcement filtering, pagination, and search
- * - Manages announcement categories
- * - Interacts with the backend API for announcement operations
+ * Community notices (announcements) data access, backed by Supabase.
  */
 
-import api from "@/services/api";
+import { supabase, ok, created, rethrow } from "@/services/supabase.js";
 import { BaseService } from "@/shared/services/BaseService";
 
-// Base API path for notices/announcements
-const path = "notices";
+const NOTICE_COLUMNS =
+  "id, title, slug, content, summary, priority, category_id, status, is_funeral, image_url, published_at, created_at, updated_at, " +
+  "category:notice_categories ( id, name, slug )";
+
+const CATEGORY_COLUMNS =
+  "id, name, slug, description, is_active, created_at, updated_at";
 
 /**
- * Fetches announcements with filtering and pagination
+ * Fetches notices with filtering and pagination.
  *
- * @param {Object} options - Query options
- * @param {number} options.page - Page number for pagination (default: 0)
- * @param {number} options.size - Number of announcements per page (default: 10)
- * @param {string} options.search - Search query for filtering announcements
- * @param {string} options.priority - Priority filter (e.g., "high", "medium", "low")
- * @param {string} options.category - Category ID for filtering announcements
- * @param {string} options.status - Announcement status filter (e.g., "published", "draft")
- * @returns {Promise} - Promise that resolves to the API response
+ * @returns {Promise} - Promise resolving to { status, data: { announcements, total, totalPages } }
  */
-export const getAnnouncements = ({
+export const getAnnouncements = async ({
   page = 0,
   size = 10,
   search = "",
@@ -36,132 +27,262 @@ export const getAnnouncements = ({
   category = "",
   status = "",
   excludeFunerals = true,
-}) =>
-  api.get(
-    `${path}?priority=${priority}&search=${search}&category=${category}&status=${status}&size=${size}&page=${page}&excludeFunerals=${excludeFunerals}`
-  );
+} = {}) => {
+  try {
+    const from = Number(page) * Number(size);
+    const to = from + Number(size) - 1;
+
+    let query = supabase
+      .from("announcements")
+      .select(NOTICE_COLUMNS, { count: "exact" })
+      .range(from, to);
+
+    if (status) query = query.eq("status", status);
+    if (priority) query = query.eq("priority", priority);
+    if (category) query = query.eq("category_id", category);
+    if (excludeFunerals) query = query.eq("is_funeral", false);
+    if (search) {
+      const term = String(search).replace(/[%,]/g, " ").trim();
+      if (term) {
+        query = query.or(`title.ilike.%${term}%,summary.ilike.%${term}%,content.ilike.%${term}%`);
+      }
+    }
+
+    query = query.order("published_at", { ascending: false, nullsFirst: false });
+
+    const { data, error, count } = await query;
+    if (error) throw error;
+
+    const total = count ?? data?.length ?? 0;
+    const totalPages = Number(size) > 0 ? Math.ceil(total / Number(size)) : 0;
+
+    return ok({ announcements: data ?? [], total, totalPages });
+  } catch (error) {
+    return rethrow(error, "Failed to fetch notices");
+  }
+};
 
 /**
- * Fetches a single announcement by its ID
+ * Fetches the notice categories with their notice counts.
  *
- * @param {number|string} id - The announcement ID
- * @returns {Promise} - Promise that resolves to the announcement data
+ * Also exported as `getCategories` because the notices store uses that name.
  */
-export const getAnnouncement = (id) => api.get(`${path}/${id}`);
+export const getAnnouncementCategories = async () => {
+  try {
+    const [{ data: categories }, { data: notices }] = await Promise.all([
+      supabase
+        .from("notice_categories")
+        .select(CATEGORY_COLUMNS)
+        .order("name"),
+      supabase.from("announcements").select("category_id").eq("status", "published"),
+    ]);
 
-/**
- * Fetches a single announcement by its slug
- *
- * @param {string} slug - The announcement slug
- * @returns {Promise} - Promise that resolves to the announcement data
- */
-export const getAnnouncementBySlug = (slug) => api.get(`${path}/slug/${slug}`);
+    const counts = new Map();
+    (notices ?? []).forEach((row) => {
+      if (!row.category_id) return;
+      counts.set(row.category_id, (counts.get(row.category_id) ?? 0) + 1);
+    });
 
-/**
- * Creates a new announcement
- *
- * @param {Object} data - The announcement data
- * @returns {Promise} - Promise that resolves to the created announcement
- */
-export const createAnnouncement = (data) => api.post(`${path}/create`, data);
+    const result = (categories ?? []).map((category) => ({
+      ...category,
+      count: counts.get(category.id) ?? 0,
+    }));
 
-/**
- * Updates an existing announcement
- *
- * @param {number|string} id - The announcement ID
- * @param {Object} data - The updated announcement data
- * @returns {Promise} - Promise that resolves to the updated announcement
- */
-export const editAnnouncement = (id, data) => api.put(`${path}/${id}`, data);
+    return ok({ categories: result });
+  } catch (error) {
+    return rethrow(error, "Failed to fetch notice categories");
+  }
+};
 
-/**
- * Deletes an announcement
- *
- * @param {number|string} id - The announcement ID
- * @returns {Promise} - Promise that resolves when the announcement is deleted
- */
-export const removeAnnouncement = (id) => api.delete(`${path}/${id}`);
+/** Creates a notice category. */
+export const createCategory = async (data) => {
+  try {
+    const { data: newCategory, error } = await supabase
+      .from("notice_categories")
+      .insert({
+        name: data.name,
+        slug: data.slug,
+        description: data.description ?? null,
+        is_active: data.is_active ?? true,
+      })
+      .select(CATEGORY_COLUMNS)
+      .single();
+    if (error) throw error;
+    return created(newCategory);
+  } catch (error) {
+    return rethrow(error, "Failed to create category");
+  }
+};
 
-/**
- * Category Management Functions
- */
+/** Updates a notice category. */
+export const editCategory = async (id, data) => {
+  try {
+    const { data: updated, error } = await supabase
+      .from("notice_categories")
+      .update({
+        name: data.name,
+        slug: data.slug,
+        description: data.description ?? null,
+        is_active: data.is_active ?? true,
+      })
+      .eq("id", id)
+      .select(CATEGORY_COLUMNS)
+      .single();
+    if (error) throw error;
+    return ok(updated);
+  } catch (error) {
+    return rethrow(error, "Failed to update category");
+  }
+};
 
-/**
- * Fetches announcement categories with filtering and pagination
- *
- * @param {Object} options - Query options
- * @param {number} options.page - Page number for pagination (default: 0)
- * @param {number} options.size - Number of categories per page (default: 10)
- * @param {string} options.search - Search query for filtering categories
- * @param {string|null} options.status - Category status filter (default: null)
- * @returns {Promise} - Promise that resolves to the API response
- */
-export const getCategories = ({
-  page = 0,
-  size = 10,
-  search = "",
-  status = null,
-}) =>
-  api.get(
-    `${path}/categories?search=${search}${status ? `&status=${status}` : ""}&size=${size}&page=${page}`
-  );
+/** Activates or retires a notice category. */
+export const changeCategoryStatus = async (id, data) => {
+  try {
+    const { data: updated, error } = await supabase
+      .from("notice_categories")
+      .update({ is_active: data?.is_active ?? true })
+      .eq("id", id)
+      .select(CATEGORY_COLUMNS)
+      .single();
+    if (error) throw error;
+    return ok(updated);
+  } catch (error) {
+    return rethrow(error, "Failed to update category status");
+  }
+};
 
-/**
- * Creates a new announcement category
- *
- * @param {Object} data - The category data
- * @returns {Promise} - Promise that resolves to the created category
- */
-export const createCategory = (data) => api.post(`${path}/categories`, data);
+/** Deletes a notice category. */
+export const removeCategory = async (id) => {
+  try {
+    const { error } = await supabase.from("notice_categories").delete().eq("id", id);
+    if (error) throw error;
+    return ok(true);
+  } catch (error) {
+    return rethrow(error, "Failed to delete category");
+  }
+};
 
-/**
- * Updates an existing announcement category
- *
- * @param {number|string} id - The category ID
- * @param {Object} data - The updated category data
- * @returns {Promise} - Promise that resolves to the updated category
- */
-export const editCategory = (id, data) =>
-  api.put(`${path}/categories/${id}`, data);
+/** Fetches a single notice by id. */
+export const getAnnouncement = async (id) => {
+  try {
+    const { data, error } = await supabase
+      .from("announcements")
+      .select(NOTICE_COLUMNS)
+      .eq("id", id)
+      .maybeSingle();
+    if (error) throw error;
+    return ok(data);
+  } catch (error) {
+    return rethrow(error, "Failed to fetch notice");
+  }
+};
 
-/**
- * Changes the status of an announcement category
- *
- * @param {number|string} id - The category ID
- * @param {Object} data - The status change data
- * @param {string} data.status - The new status value
- * @returns {Promise} - Promise that resolves when the status is changed
- */
-export const changeCategoryStatus = (id, data) =>
-  api.put(`${path}/categories/${id}/change-status`, data);
+/** Fetches a single notice by slug. */
+export const getAnnouncementBySlug = async (slug) => {
+  try {
+    const { data, error } = await supabase
+      .from("announcements")
+      .select(NOTICE_COLUMNS)
+      .eq("slug", slug)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) {
+      const err = new Error("Notice not found");
+      err.response = { status: 404, data: { message: "Notice not found" } };
+      throw err;
+    }
+    return ok(data);
+  } catch (error) {
+    return rethrow(error, "Failed to fetch notice");
+  }
+};
 
-/**
- * Deletes an announcement category
- *
- * @param {number|string} id - The category ID
- * @returns {Promise} - Promise that resolves when the category is deleted
- */
-export const removeCategory = (id) => api.delete(`${path}/categories/${id}`);
+/** Creates a notice. */
+export const createAnnouncement = async (data) => {
+  try {
+    const { data: newNotice, error } = await supabase
+      .from("announcements")
+      .insert({
+        title: data.title,
+        slug: data.slug,
+        content: data.content ?? null,
+        summary: data.summary ?? null,
+        priority: data.priority ?? "normal",
+        category_id: data.category_id ?? data.categoryId ?? null,
+        status: data.status ?? "published",
+        is_funeral: data.is_funeral ?? data.isFuneral ?? false,
+        image_url: data.image_url ?? data.imageUrl ?? null,
+        published_at:
+          data.published_at ?? data.publishedAt ?? new Date().toISOString(),
+      })
+      .select(NOTICE_COLUMNS)
+      .single();
+    if (error) throw error;
+    return created(newNotice);
+  } catch (error) {
+    return rethrow(error, "Failed to create notice");
+  }
+};
+
+/** Updates a notice. */
+export const editAnnouncement = async (id, data) => {
+  try {
+    const { data: updated, error } = await supabase
+      .from("announcements")
+      .update({
+        title: data.title,
+        slug: data.slug,
+        content: data.content ?? null,
+        summary: data.summary ?? null,
+        priority: data.priority ?? "normal",
+        category_id: data.category_id ?? data.categoryId ?? null,
+        status: data.status ?? "published",
+        is_funeral: data.is_funeral ?? data.isFuneral ?? false,
+        image_url: data.image_url ?? data.imageUrl ?? null,
+      })
+      .eq("id", id)
+      .select(NOTICE_COLUMNS)
+      .single();
+    if (error) throw error;
+    return ok(updated);
+  } catch (error) {
+    return rethrow(error, "Failed to update notice");
+  }
+};
+
+/** Deletes a notice. */
+export const removeAnnouncement = async (id) => {
+  try {
+    const { error } = await supabase.from("announcements").delete().eq("id", id);
+    if (error) throw error;
+    return ok(true);
+  } catch (error) {
+    return rethrow(error, "Failed to delete notice");
+  }
+};
+
+/** Alias kept for the notices store, which calls this `getCategories`. */
+export const getCategories = getAnnouncementCategories;
 
 export class AnnouncementsService extends BaseService {
   constructor() {
-    super("notices");
+    super("announcements");
   }
 }
 
-// expose the domain functions as instance methods (they don't use `this`)
 Object.assign(AnnouncementsService.prototype, {
   getAnnouncements,
-  getAnnouncement,
-  getAnnouncementBySlug,
-  createAnnouncement,
-  editAnnouncement,
-  removeAnnouncement,
   getCategories,
   createCategory,
   editCategory,
   changeCategoryStatus,
   removeCategory,
+  getAnnouncementCategories,
+  getAnnouncement,
+  getAnnouncementBySlug,
+  createAnnouncement,
+  editAnnouncement,
+  removeAnnouncement,
 });
 
 export const announcementsService = new AnnouncementsService();

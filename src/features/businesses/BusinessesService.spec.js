@@ -1,238 +1,154 @@
-// src/features/businesses/BusinessesService.spec.js
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { callsTo } from "../../../tests/helpers/supabaseMock.js";
 
-vi.mock("@/services/api", () => ({
-  default: {
-    get: vi.fn(),
-    post: vi.fn(),
-    put: vi.fn(),
-    delete: vi.fn(),
-  },
+const state = vi.hoisted(() => ({
+  tables: {},
+  builders: {},
+  session: null,
+  user: null,
 }));
 
-import api from "@/services/api";
+vi.mock("@/services/supabase.js", async () => {
+  const { buildSupabaseModule } = await import(
+    "../../../tests/helpers/supabaseModuleMock.js"
+  );
+  return buildSupabaseModule(state);
+});
+
 import {
   getBusinesses,
-  getAds,
-  getCampaigns,
   getBusiness,
+  getBusinessAds,
   createBusiness,
   editBusiness,
   removeBusiness,
   register,
+  getAds,
+  getCampaigns,
   getPayments,
-  BusinessesService,
-  businessesService,
-} from "@/features/businesses/BusinessesService";
-import defaultExport from "@/features/businesses/BusinessesService";
-import { BaseService } from "@/shared/services/BaseService";
+} from "@/features/businesses/BusinessesService.js";
 
-beforeEach(() => {
-  vi.clearAllMocks();
-});
+describe("features/businesses/BusinessesService", () => {
+  beforeEach(reset);
 
-describe("getBusinesses", () => {
-  it("uses provided values for every param", () => {
-    const resp = { data: [] };
-    api.get.mockReturnValue(resp);
+  it("lists directory businesses", async () => {
+    state.tables.businesses = { data: [{ id: "b1", name: "Spar" }], error: null, count: 1 };
 
-    const result = getBusinesses({
-      type: "ad",
-      page: 3,
-      size: 25,
-      search: "shoes",
-      category: "retail",
-      status: "active",
-    });
+    const response = await getBusinesses({ size: 10 });
 
-    expect(api.get).toHaveBeenCalledTimes(1);
-    expect(api.get).toHaveBeenCalledWith(
-      "businesses?type=ad&search=shoes&category=retail&status=active&size=25&page=3"
-    );
-    expect(result).toBe(resp);
+    expect(response.status).toBe(200);
+    expect(response.data.businesses).toHaveLength(1);
   });
 
-  it("falls back to default values when called with an empty object", () => {
-    api.get.mockReturnValue("default-resp");
+  it("searches businesses by name", async () => {
+    state.tables.businesses = { data: [], error: null, count: 0 };
 
-    const result = getBusinesses({});
+    await getBusinesses({ search: "spar" });
 
-    expect(api.get).toHaveBeenCalledWith(
-      "businesses?type=&search=&category=&status=&size=10&page=0"
-    );
-    expect(result).toBe("default-resp");
-  });
-});
-
-describe("getAds", () => {
-  it("calls the ads endpoint regardless of id", () => {
-    api.get.mockReturnValue("ads");
-    expect(getAds(42)).toBe("ads");
-    expect(api.get).toHaveBeenCalledWith("businesses/ads");
-  });
-
-  it("works when called without an id", () => {
-    api.get.mockReturnValue("ads");
-    expect(getAds()).toBe("ads");
-    expect(api.get).toHaveBeenCalledWith("businesses/ads");
-  });
-});
-
-describe("getCampaigns", () => {
-  it("calls the campaigns endpoint regardless of id", () => {
-    api.get.mockReturnValue("campaigns");
-    expect(getCampaigns(7)).toBe("campaigns");
-    expect(api.get).toHaveBeenCalledWith("businesses/campaigns");
-  });
-
-  it("works when called without an id", () => {
-    api.get.mockReturnValue("campaigns");
-    expect(getCampaigns()).toBe("campaigns");
-    expect(api.get).toHaveBeenCalledWith("businesses/campaigns");
-  });
-});
-
-describe("getBusiness", () => {
-  it("requests a single business by id", () => {
-    api.get.mockReturnValue("one");
-    expect(getBusiness(99)).toBe("one");
-    expect(api.get).toHaveBeenCalledWith("businesses/99");
-  });
-});
-
-describe("createBusiness", () => {
-  it("posts to the create endpoint with data", () => {
-    const data = { name: "Acme" };
-    api.post.mockReturnValue("created");
-    expect(createBusiness(data)).toBe("created");
-    expect(api.post).toHaveBeenCalledWith("businesses/create", data);
-  });
-});
-
-describe("editBusiness", () => {
-  it("puts data to the business id endpoint", () => {
-    const data = { name: "New" };
-    api.put.mockReturnValue("edited");
-    expect(editBusiness(5, data)).toBe("edited");
-    expect(api.put).toHaveBeenCalledWith("businesses/5", data);
-  });
-});
-
-describe("removeBusiness", () => {
-  it("deletes a business by id", () => {
-    api.delete.mockReturnValue("removed");
-    expect(removeBusiness(8)).toBe("removed");
-    expect(api.delete).toHaveBeenCalledWith("businesses/8");
-  });
-});
-
-describe("register", () => {
-  it("posts to the create endpoint with data", () => {
-    const data = { email: "a@b.c" };
-    api.post.mockReturnValue("registered");
-    expect(register(data)).toBe("registered");
-    expect(api.post).toHaveBeenCalledWith("businesses/create", data);
-  });
-});
-
-describe("getPayments", () => {
-  it("uses provided values for every param", () => {
-    api.get.mockReturnValue("payments");
-
-    const result = getPayments({
-      businessId: 12,
-      page: 2,
-      size: 50,
-      search: "invoice",
-      status: "paid",
-    });
-
-    expect(result).toBe("payments");
-    expect(api.get).toHaveBeenCalledWith(
-      "businesses/payments?businessId=12&search=invoice&status=paid&size=50&page=2"
+    expect(callsTo(state.builders.businesses, "or")[0].args[0]).toContain(
+      "name.ilike.%spar%",
     );
   });
 
-  it("falls back to default values when called with an empty object", () => {
-    api.get.mockReturnValue("payments-default");
+  it("fetches a single business", async () => {
+    state.tables.businesses = { data: { id: "b1", name: "Spar" }, error: null };
 
-    const result = getPayments({});
+    const response = await getBusiness("b1");
 
-    expect(result).toBe("payments-default");
-    expect(api.get).toHaveBeenCalledWith(
-      "businesses/payments?businessId=0&search=&status=&size=10&page=0"
+    expect(response.data.name).toBe("Spar");
+  });
+
+  it("lists the ads of a business", async () => {
+    state.tables.ads = { data: [{ id: "ad1" }], error: null };
+
+    const response = await getBusinessAds("b1");
+
+    expect(response.data).toHaveLength(1);
+  });
+
+  it("creates a business", async () => {
+    state.tables.businesses = { data: { id: "b1", name: "Spar" }, error: null };
+
+    const response = await createBusiness({ name: "Spar" });
+
+    expect(response.status).toBe(201);
+  });
+
+  it("updates a business", async () => {
+    state.tables.businesses = { data: { id: "b1", name: "Spar" }, error: null };
+
+    const response = await editBusiness("b1", { name: "Spar" });
+
+    expect(response.status).toBe(200);
+  });
+
+  it("removes a business", async () => {
+    state.tables.businesses = { data: null, error: null };
+
+    const response = await removeBusiness("b1");
+
+    expect(response.status).toBe(200);
+  });
+
+  it("registers a business account", async () => {
+    state.session = { access_token: "token" };
+    state.user = { id: "u1", email: "a@b.co" };
+    state.tables.profiles = { data: { id: "u1" }, error: null };
+
+    const response = await register({ email: "a@b.co", password: "secret" });
+
+    expect(response.status).toBe(201);
+    expect(response.data.role.name).toBe("business");
+  });
+
+  it("refuses to register without an email and password", async () => {
+    await expect(register({})).rejects.toThrow(
+      "Email and password are required",
     );
   });
-});
 
-describe("rejected (catch) paths via the API boundary", () => {
-  it("getBusinesses rejects when api.get rejects", async () => {
-    const err = new Error("network");
-    api.get.mockRejectedValue(err);
-    await expect(getBusinesses({})).rejects.toThrow("network");
+  it("lists the ads of the signed-in business", async () => {
+    state.session = { access_token: "token", user: { id: "u1" } };
+    state.tables.ads = { data: [{ id: "ad1" }], error: null, count: 1 };
+
+    const response = await getAds({ size: 10 });
+
+    expect(response.data).toHaveLength(1);
+    expect(callsTo(state.builders.ads, "eq")[0].args).toEqual([
+      "business_id",
+      "u1",
+    ]);
   });
 
-  it("createBusiness rejects when api.post rejects", async () => {
-    api.post.mockRejectedValue(new Error("post-fail"));
-    await expect(createBusiness({})).rejects.toThrow("post-fail");
+  it("returns no ads when nobody is signed in", async () => {
+    const response = await getAds({});
+
+    expect(response.data).toEqual([]);
   });
 
-  it("editBusiness rejects when api.put rejects", async () => {
-    api.put.mockRejectedValue(new Error("put-fail"));
-    await expect(editBusiness(1, {})).rejects.toThrow("put-fail");
+  it("lists the campaigns of the signed-in business", async () => {
+    state.session = { access_token: "token", user: { id: "u1" } };
+    state.tables.campaigns = { data: [{ id: "c1" }], error: null, count: 1 };
+
+    const response = await getCampaigns({});
+
+    expect(response.data).toHaveLength(1);
   });
 
-  it("removeBusiness rejects when api.delete rejects", async () => {
-    api.delete.mockRejectedValue(new Error("delete-fail"));
-    await expect(removeBusiness(1)).rejects.toThrow("delete-fail");
-  });
-});
+  it("lists the payments of the signed-in business", async () => {
+    state.session = { access_token: "token", user: { id: "u1" } };
+    state.tables.payments = { data: [{ id: "pay1" }], error: null, count: 1 };
 
-describe("BusinessesService class", () => {
-  it("extends BaseService and sets the businesses resource", () => {
-    const service = new BusinessesService();
-    expect(service).toBeInstanceOf(BaseService);
-    expect(service).toBeInstanceOf(BusinessesService);
-    expect(service.resource).toBe("businesses");
-    expect(service.api).toBe(api);
-  });
+    const response = await getPayments({ size: 10 });
 
-  it("exposes the domain functions as prototype methods", () => {
-    expect(BusinessesService.prototype.getBusinesses).toBe(getBusinesses);
-    expect(BusinessesService.prototype.getAds).toBe(getAds);
-    expect(BusinessesService.prototype.getCampaigns).toBe(getCampaigns);
-    expect(BusinessesService.prototype.getBusiness).toBe(getBusiness);
-    expect(BusinessesService.prototype.createBusiness).toBe(createBusiness);
-    expect(BusinessesService.prototype.editBusiness).toBe(editBusiness);
-    expect(BusinessesService.prototype.removeBusiness).toBe(removeBusiness);
-    expect(BusinessesService.prototype.register).toBe(register);
-    expect(BusinessesService.prototype.getPayments).toBe(getPayments);
+    expect(response.data.payments).toHaveLength(1);
+    expect(response.data.page).toBe(0);
   });
 });
 
-describe("businessesService singleton", () => {
-  it("is a BusinessesService instance and the default export", () => {
-    expect(businessesService).toBeInstanceOf(BusinessesService);
-    expect(defaultExport).toBe(businessesService);
-  });
-
-  it("can invoke a domain method through the singleton instance", () => {
-    api.get.mockReturnValue("via-singleton");
-
-    const result = businessesService.getBusiness(123);
-
-    expect(result).toBe("via-singleton");
-    expect(api.get).toHaveBeenCalledWith("businesses/123");
-  });
-
-  it("can invoke an inherited BaseService method through the singleton", () => {
-    api.get.mockReturnValue("listed");
-
-    const result = businessesService.list({ page: 1 });
-
-    expect(result).toBe("listed");
-    expect(api.get).toHaveBeenCalledWith("/businesses", {
-      params: { page: 1 },
-    });
-  });
-});
+const reset = () => {
+  state.tables = {};
+  Object.keys(state.builders).forEach((key) => delete state.builders[key]);
+  state.session = null;
+  state.user = null;
+};

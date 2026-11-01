@@ -1,269 +1,314 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { callsTo } from "../../../tests/helpers/supabaseMock.js";
 
-vi.mock("@/services/api", () => ({
-  default: {
-    get: vi.fn(),
-    post: vi.fn(),
-    put: vi.fn(),
-    delete: vi.fn(),
-  },
+const state = vi.hoisted(() => ({
+  tables: {},
+  builders: {},
+  session: null,
+  user: null,
 }));
 
-import api from "@/services/api";
+vi.mock("@/services/supabase.js", async () => {
+  const { buildSupabaseModule } = await import(
+    "../../../tests/helpers/supabaseModuleMock.js"
+  );
+  return buildSupabaseModule(state);
+});
+
+vi.mock("@/features/media/MediaService.js", () => ({
+  uploadDataUrl: vi.fn(async (dataUrl) => ({
+    id: "media-1",
+    file: "https://cdn.test/ad.png",
+    storage_path: "ad/ad.png",
+  })),
+}));
+
 import {
-  getAdByPlacement,
-  getAdByPlacementAndTags,
-  getAllAdByPlacement,
-  trackClick,
-  trackImpression,
   getAds,
   getAd,
+  getAllAdByPlacement,
+  getAdByPlacement,
   createAd,
   editAd,
   removeAd,
+  trackClick,
+  trackImpression,
+  getPlacements,
+  getAdPlacements,
+  createAdPlacement,
+  editAdPlacement,
+  removeAdPlacement,
   getCampaigns,
   createCampaign,
   editCampaign,
   removeCampaign,
-  getPlacements,
-  getAdPlacements,
-  getAdPlacement,
-  createAdPlacement,
-  editAdPlacement,
-  removeAdPlacement,
-  AdsService,
-  adsService,
-} from "@/features/ads/AdsService";
-import adsServiceDefault from "@/features/ads/AdsService";
-import { BaseService } from "@/shared/services/BaseService";
+} from "@/features/ads/AdsService.js";
 
-describe("AdsService", () => {
-  beforeEach(() => vi.clearAllMocks());
+const AD = {
+  id: "ad1",
+  title: "Laudium Spar",
+  description: "Shop local",
+  business_name: "Laudium Spar",
+  placement_id: "p1",
+  status: "active",
+  images: [],
+  image_url: null,
+  impressions: 0,
+  clicks: 0,
+};
 
-  it("getAdByPlacement() GETs the placement endpoint", () => {
-    const res = { data: 1 };
-    api.get.mockReturnValue(res);
-    expect(getAdByPlacement("home_banner")).toBe(res);
-    expect(api.get).toHaveBeenCalledWith("/ads/placement/home_banner");
-  });
+const reset = () => {
+  state.tables = {};
+  Object.keys(state.builders).forEach((key) => delete state.builders[key]);
+  state.session = null;
+  state.user = null;
+};
 
-  it("getAdByPlacementAndTags() POSTs tags to the placement endpoint", () => {
-    const res = { data: 2 };
-    const tags = ["a", "b"];
-    api.post.mockReturnValue(res);
-    expect(getAdByPlacementAndTags("home_banner", tags)).toBe(res);
-    expect(api.post).toHaveBeenCalledWith("/ads/placement/home_banner", tags);
-  });
+describe("features/ads/AdsService", () => {
+  beforeEach(reset);
 
-  it("getAllAdByPlacement() GETs the all-placement endpoint", () => {
-    const res = { data: 3 };
-    api.get.mockReturnValue(res);
-    expect(getAllAdByPlacement("sidebar")).toBe(res);
-    expect(api.get).toHaveBeenCalledWith("/ads/placement/sidebar/all");
-  });
+  describe("getAds", () => {
+    it("returns ads with pagination info", async () => {
+      state.tables.ads = { data: [AD], error: null, count: 1 };
 
-  it("trackClick() PUTs the click endpoint", () => {
-    const res = { data: 4 };
-    api.put.mockReturnValue(res);
-    expect(trackClick(42)).toBe(res);
-    expect(api.put).toHaveBeenCalledWith("/ads/42/click");
-  });
+      const response = await getAds({ size: 10 });
 
-  it("trackImpression() PUTs the impression endpoint", () => {
-    const res = { data: 5 };
-    api.put.mockReturnValue(res);
-    expect(trackImpression("99")).toBe(res);
-    expect(api.put).toHaveBeenCalledWith("/ads/99/impression");
-  });
+      expect(response.status).toBe(200);
+      expect(response.data.ads).toHaveLength(1);
+      expect(response.data.totalPages).toBe(1);
+    });
 
-  it("getAds() applies default options when called with empty object", () => {
-    const res = { data: 6 };
-    api.get.mockReturnValue(res);
-    expect(getAds({})).toBe(res);
-    expect(api.get).toHaveBeenCalledWith("/ads", {
-      params: { search: "", placement: "", status: "", size: 10, page: 0 },
+    it("exposes the image list as files", async () => {
+      state.tables.ads = {
+        data: [{ ...AD, images: ["https://cdn.test/a.png"] }],
+        error: null,
+        count: 1,
+      };
+
+      const response = await getAds({});
+
+      expect(response.data.ads[0].files).toEqual(["https://cdn.test/a.png"]);
+      expect(response.data.ads[0].image_url).toBe("https://cdn.test/a.png");
+    });
+
+    it("resolves a placement name to its id", async () => {
+      state.tables.ad_placements = {
+        data: [{ id: "p1", name: "news_articles" }],
+        error: null,
+      };
+      state.tables.ads = { data: [], error: null, count: 0 };
+
+      await getAds({ placement: "news_articles" });
+
+      expect(callsTo(state.builders.ads, "eq")[0].args).toEqual([
+        "placement_id",
+        "p1",
+      ]);
+    });
+
+    it("searches on title and business name", async () => {
+      state.tables.ads = { data: [], error: null, count: 0 };
+
+      await getAds({ search: "spar" });
+
+      const orCall = callsTo(state.builders.ads, "or")[0];
+      expect(orCall.args[0]).toContain("title.ilike.%spar%");
+    });
+
+    it("rejects when the query fails", async () => {
+      state.tables.ads = { data: null, error: { message: "denied" } };
+
+      await expect(getAds({})).rejects.toThrow("denied");
     });
   });
 
-  it("getAds() forwards all provided options", () => {
-    const res = { data: 7 };
-    api.get.mockReturnValue(res);
-    expect(
-      getAds({
-        page: 2,
-        size: 25,
-        search: "q",
-        status: "active",
-        placement: "home",
-      })
-    ).toBe(res);
-    expect(api.get).toHaveBeenCalledWith("/ads", {
-      params: {
-        search: "q",
-        placement: "home",
-        status: "active",
-        size: 25,
-        page: 2,
-      },
+  describe("getAd / getAllAdByPlacement / getAdByPlacement", () => {
+    it("fetches a single ad", async () => {
+      state.tables.ads = { data: AD, error: null };
+      state.tables.ad_placements = { data: null, error: null };
+
+      const response = await getAd("ad1");
+
+      expect(response.status).toBe(200);
+      expect(response.data.title).toBe("Laudium Spar");
+    });
+
+    it("reports a missing ad as not found", async () => {
+      state.tables.ads = { data: null, error: null };
+
+      await expect(getAd("nope")).rejects.toThrow("Ad not found");
+    });
+
+    it("returns only ads inside their run window", async () => {
+      state.tables.ad_placements = {
+        data: [{ id: "p1", name: "news_articles" }],
+        error: null,
+      };
+      state.tables.ads = { data: [AD], error: null };
+
+      const response = await getAllAdByPlacement("news_articles");
+
+      expect(response.data).toHaveLength(1);
+      const eqArgs = callsTo(state.builders.ads, "eq").map((call) => call.args);
+      expect(eqArgs).toContainEqual(["placement_id", "p1"]);
+      expect(eqArgs).toContainEqual(["status", "active"]);
+    });
+
+    it("returns a single ad for a placement", async () => {
+      state.tables.ad_placements = {
+        data: [{ id: "p1", name: "news_articles" }],
+        error: null,
+      };
+      state.tables.ads = { data: [AD, { ...AD, id: "ad2" }], error: null };
+
+      const response = await getAdByPlacement("news_articles");
+
+      expect(response.data.id).toBe("ad1");
     });
   });
 
-  it("getAd() GETs a single ad by id", () => {
-    const res = { data: 8 };
-    api.get.mockReturnValue(res);
-    expect(getAd(11)).toBe(res);
-    expect(api.get).toHaveBeenCalledWith("/ads/11");
-  });
+  describe("createAd / editAd / removeAd", () => {
+    it("creates an ad as a draft by default", async () => {
+      state.tables.ads = { data: AD, error: null };
 
-  it("createAd() POSTs to the create endpoint", () => {
-    const res = { data: 9 };
-    const data = { title: "x" };
-    api.post.mockReturnValue(res);
-    expect(createAd(data)).toBe(res);
-    expect(api.post).toHaveBeenCalledWith("/ads/create", data);
-  });
+      const response = await createAd({ title: "Laudium Spar" });
 
-  it("editAd() PUTs to the ad id endpoint", () => {
-    const res = { data: 10 };
-    const data = { title: "y" };
-    api.put.mockReturnValue(res);
-    expect(editAd(3, data)).toBe(res);
-    expect(api.put).toHaveBeenCalledWith("/ads/3", data);
-  });
-
-  it("removeAd() DELETEs the ad id endpoint", () => {
-    const res = { data: 11 };
-    api.delete.mockReturnValue(res);
-    expect(removeAd(3)).toBe(res);
-    expect(api.delete).toHaveBeenCalledWith("/ads/3");
-  });
-
-  it("getCampaigns() uses defaults when called with no args", () => {
-    const res = { data: 12 };
-    api.get.mockReturnValue(res);
-    expect(getCampaigns()).toBe(res);
-    expect(api.get).toHaveBeenCalledWith("/campaigns?search=");
-  });
-
-  it("getCampaigns() uses provided args", () => {
-    const res = { data: 13 };
-    api.get.mockReturnValue(res);
-    expect(getCampaigns("active", "1", "term", "cat")).toBe(res);
-    expect(api.get).toHaveBeenCalledWith("/campaigns?search=term");
-  });
-
-  it("createCampaign() POSTs to the campaigns create endpoint", () => {
-    const res = { data: 14 };
-    const data = { name: "c" };
-    api.post.mockReturnValue(res);
-    expect(createCampaign(data)).toBe(res);
-    expect(api.post).toHaveBeenCalledWith("/campaigns/create", data);
-  });
-
-  it("editCampaign() PUTs to the campaign id endpoint", () => {
-    const res = { data: 15 };
-    const data = { name: "d" };
-    api.put.mockReturnValue(res);
-    expect(editCampaign(7, data)).toBe(res);
-    expect(api.put).toHaveBeenCalledWith("/campaigns/7", data);
-  });
-
-  it("removeCampaign() DELETEs the campaign id endpoint", () => {
-    const res = { data: 16 };
-    api.delete.mockReturnValue(res);
-    expect(removeCampaign(7)).toBe(res);
-    expect(api.delete).toHaveBeenCalledWith("/campaigns/7");
-  });
-
-  it("getPlacements() GETs the placements list endpoint", () => {
-    const res = { data: 17 };
-    api.get.mockReturnValue(res);
-    expect(getPlacements()).toBe(res);
-    expect(api.get).toHaveBeenCalledWith("/ads/placements");
-  });
-
-  it("getAdPlacements() applies defaults with empty object", () => {
-    const res = { data: 18 };
-    api.get.mockReturnValue(res);
-    expect(getAdPlacements({})).toBe(res);
-    expect(api.get).toHaveBeenCalledWith(
-      "/ad-placements?search=&status=&size=10&page=0"
-    );
-  });
-
-  it("getAdPlacements() forwards provided options", () => {
-    const res = { data: 19 };
-    api.get.mockReturnValue(res);
-    expect(
-      getAdPlacements({ page: "3", size: "50", search: "s", status: "active" })
-    ).toBe(res);
-    expect(api.get).toHaveBeenCalledWith(
-      "/ad-placements?search=s&status=active&size=50&page=3"
-    );
-  });
-
-  it("getAdPlacement() GETs a single placement by id", () => {
-    const res = { data: 20 };
-    api.get.mockReturnValue(res);
-    expect(getAdPlacement(5)).toBe(res);
-    expect(api.get).toHaveBeenCalledWith("/ad-placements/5");
-  });
-
-  it("createAdPlacement() POSTs to the create endpoint", () => {
-    const res = { data: 21 };
-    const data = { key: "k" };
-    api.post.mockReturnValue(res);
-    expect(createAdPlacement(data)).toBe(res);
-    expect(api.post).toHaveBeenCalledWith("/ad-placements/create", data);
-  });
-
-  it("editAdPlacement() PUTs to the placement id endpoint", () => {
-    const res = { data: 22 };
-    const data = { key: "k2" };
-    api.put.mockReturnValue(res);
-    expect(editAdPlacement(8, data)).toBe(res);
-    expect(api.put).toHaveBeenCalledWith("/ad-placements/8", data);
-  });
-
-  it("removeAdPlacement() DELETEs the placement id endpoint", () => {
-    const res = { data: 23 };
-    api.delete.mockReturnValue(res);
-    expect(removeAdPlacement(8)).toBe(res);
-    expect(api.delete).toHaveBeenCalledWith("/ad-placements/8");
-  });
-
-  describe("AdsService class and singleton", () => {
-    it("extends BaseService and sets the 'ads' resource", () => {
-      const svc = new AdsService();
-      expect(svc).toBeInstanceOf(BaseService);
-      expect(svc.resource).toBe("ads");
-      expect(svc.api).toBe(api);
+      expect(response.status).toBe(201);
+      const insert = callsTo(state.builders.ads, "insert")[0];
+      expect(insert.args[0]).toMatchObject({ title: "Laudium Spar", status: "draft" });
     });
 
-    it("exposes the domain functions as instance methods", () => {
-      const res = { data: 24 };
-      api.get.mockReturnValue(res);
-      expect(adsService.getAdByPlacement("home_banner")).toBe(res);
-      expect(api.get).toHaveBeenCalledWith("/ads/placement/home_banner");
+    it("uploads base64 creatives and stores their URLs", async () => {
+      state.tables.ads = { data: AD, error: null };
+
+      await createAd({ title: "Laudium Spar", images: ["data:image/png;base64,AAA"] });
+
+      const insert = callsTo(state.builders.ads, "insert")[0];
+      expect(insert.args[0].images).toEqual(["https://cdn.test/ad.png"]);
+      expect(insert.args[0].image_url).toBe("https://cdn.test/ad.png");
     });
 
-    it("singleton delegates a put-based method too", () => {
-      const res = { data: 25 };
-      api.put.mockReturnValue(res);
-      expect(adsService.trackClick(1)).toBe(res);
-      expect(api.put).toHaveBeenCalledWith("/ads/1/click");
+    it("keeps creatives that are already URLs", async () => {
+      state.tables.ads = { data: AD, error: null };
+
+      await createAd({ title: "Laudium Spar", images: ["https://cdn.test/x.png"] });
+
+      const insert = callsTo(state.builders.ads, "insert")[0];
+      expect(insert.args[0].images).toEqual(["https://cdn.test/x.png"]);
     });
 
-    it("inherits BaseService verbs via the 'ads' resource", () => {
-      const res = { data: 26 };
-      api.get.mockReturnValue(res);
-      expect(adsService.list({ page: 1 })).toBe(res);
-      expect(api.get).toHaveBeenCalledWith("/ads", { params: { page: 1 } });
+    it("updates an ad", async () => {
+      state.tables.ads = { data: AD, error: null };
+
+      const response = await editAd("ad1", { title: "Updated" });
+
+      expect(response.status).toBe(200);
+      expect(callsTo(state.builders.ads, "update")[0].args[0]).toEqual({
+        title: "Updated",
+      });
     });
 
-    it("default export is the singleton instance", () => {
-      expect(adsServiceDefault).toBe(adsService);
-      expect(adsServiceDefault).toBeInstanceOf(AdsService);
+    it("removes an ad", async () => {
+      state.tables.ads = { data: null, error: null };
+
+      const response = await removeAd("ad1");
+
+      expect(response.status).toBe(200);
+      expect(callsTo(state.builders.ads, "delete")).toHaveLength(1);
+    });
+  });
+
+  describe("tracking", () => {
+    it("records a click", async () => {
+      const response = await trackClick("ad1");
+
+      expect(response.status).toBe(200);
+    });
+
+    it("records an impression", async () => {
+      const response = await trackImpression("ad1");
+
+      expect(response.status).toBe(200);
+    });
+  });
+
+  describe("placements", () => {
+    it("lists placements", async () => {
+      state.tables.ad_placements = {
+        data: [{ id: "p1", name: "news_articles" }],
+        error: null,
+      };
+
+      const response = await getPlacements();
+
+      expect(response.data).toHaveLength(1);
+    });
+
+    it("lists placements with pagination", async () => {
+      state.tables.ad_placements = { data: [], error: null, count: 0 };
+
+      const response = await getAdPlacements({ page: "0", size: "10" });
+
+      expect(response.status).toBe(200);
+      expect(response.data.total).toBe(0);
+    });
+
+    it("creates a placement", async () => {
+      state.tables.ad_placements = { data: { id: "p2", name: "new" }, error: null };
+
+      const response = await createAdPlacement({ name: "new" });
+
+      expect(response.status).toBe(201);
+    });
+
+    it("updates a placement", async () => {
+      state.tables.ad_placements = { data: { id: "p1", name: "x" }, error: null };
+
+      const response = await editAdPlacement("p1", { name: "x" });
+
+      expect(response.status).toBe(200);
+    });
+
+    it("removes a placement", async () => {
+      state.tables.ad_placements = { data: null, error: null };
+
+      const response = await removeAdPlacement("p1");
+
+      expect(response.status).toBe(200);
+    });
+  });
+
+  describe("campaigns", () => {
+    it("lists campaigns", async () => {
+      state.tables.campaigns = { data: [{ id: "c1", name: "Winter" }], error: null };
+
+      const response = await getCampaigns();
+
+      expect(response.data).toHaveLength(1);
+    });
+
+    it("creates a campaign", async () => {
+      state.tables.campaigns = { data: { id: "c1", name: "Winter" }, error: null };
+
+      const response = await createCampaign({ name: "Winter" });
+
+      expect(response.status).toBe(201);
+    });
+
+    it("updates a campaign", async () => {
+      state.tables.campaigns = { data: { id: "c1", name: "Winter" }, error: null };
+
+      const response = await editCampaign("c1", { name: "Winter" });
+
+      expect(response.status).toBe(200);
+    });
+
+    it("removes a campaign", async () => {
+      state.tables.campaigns = { data: null, error: null };
+
+      const response = await removeCampaign("c1");
+
+      expect(response.status).toBe(200);
     });
   });
 });

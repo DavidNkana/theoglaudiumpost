@@ -15,6 +15,15 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  /**
+   * Fills the parent cell instead of using the masonry height.
+   *
+   * Used by the article grid, where an ad occupies exactly one article cell.
+   */
+  fill: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits(['loaded']);
@@ -286,7 +295,11 @@ const handleAdClick = (event) => {
   >
     <div class="pin-ad-wrapper" :class="{ 'wide-wrapper': isWideCard }">
       <!-- Ad Card -->
-      <div class="pin-ad-card" :class="{ 'wide-card': isWideCard }" :style="{ height: randomHeight + 'px' }">
+      <div
+          class="pin-ad-card"
+          :class="{ 'wide-card': isWideCard, 'fill-card': props.fill }"
+          :style="props.fill ? undefined : { height: randomHeight + 'px' }"
+      >
         <div class="pin-ad-image-container">
           <!-- YouTube Video Ad (auto-plays muted in feed, opens dialog with sound on click) -->
           <template v-if="hasVideo && isYouTubeVideo">
@@ -421,6 +434,15 @@ const handleAdClick = (event) => {
 /* Wide card that spans 2 columns */
 .wide-card {
   width: 100%; /* Override width for wide cards */
+}
+
+/* Card that fills the grid cell it sits in */
+.fill-card {
+  height: 100%;
+}
+
+.fill-card .pin-ad-image {
+  object-fit: cover;
 }
 
 /* Hover effects for the ad card */

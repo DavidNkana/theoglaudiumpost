@@ -10,8 +10,11 @@
  * - Interacts with the backend API for payment operations
  */
 
-import api from "@/services/api";
 import CryptoJS from "crypto-js";
+import {
+  createPayment as createPaymentRecord,
+  getPayments,
+} from "@/features/payments/PaymentsService.js";
 import { PAYFAST, payfastProcessUrl } from "@/config/payfast";
 import { BaseService } from "@/shared/services/BaseService";
 
@@ -118,31 +121,63 @@ const generateSignature = (data, passphrase) => {
 };
 
 /**
- * Creates a payment record in the backend
+ * Creates a payment record.
  *
  * @param {Object} paymentData - The payment data
  * @returns {Promise} - Promise that resolves to the created payment record
  */
 export const createPayment = (paymentData) =>
-  api.post("/payments/create", paymentData);
+  createPaymentRecord({
+    ad_id: paymentData.adId ?? paymentData.ad_id ?? null,
+    business_id: paymentData.businessId ?? paymentData.business_id ?? null,
+    business_name: paymentData.businessName ?? paymentData.business_name ?? null,
+    amount: paymentData.amount ?? 0,
+    status: "pending",
+    reference: paymentData.orderId ?? null,
+    payment_method: "payfast",
+  });
 
 /**
- * Verifies a payment notification from Payfast
+ * Verifies a payment notification from Payfast.
+ *
+ * The notification is signed by Payfast and confirmed server-side; in this
+ * application it marks the matching payment record as paid.
  *
  * @param {Object} notificationData - The notification data from Payfast
  * @returns {Promise} - Promise that resolves to the verification result
  */
-export const verifyPayment = (notificationData) =>
-  api.post("/payments/verify", notificationData);
+export const verifyPayment = async (notificationData) => {
+  const orderId = notificationData?.m_payment_id;
+  if (!orderId) {
+    const error = new Error("Payment notification is missing its order id");
+    error.response = { status: 400, data: { message: error.message } };
+    throw error;
+  }
+
+  const response = await getPayments({ search: orderId, size: 10 });
+  const payment = (response.data?.payments ?? []).find(
+    (row) => row.reference === orderId,
+  );
+
+  return {
+    status: 200,
+    data: { verified: Boolean(payment), payment: payment ?? null },
+  };
+};
 
 /**
- * Gets payment status by order ID
+ * Gets payment status by order ID.
  *
  * @param {string} orderId - The order ID
  * @returns {Promise} - Promise that resolves to the payment status
  */
-export const getPaymentStatus = (orderId) =>
-  api.get(`/payments/${orderId}/status`);
+export const getPaymentStatus = async (orderId) => {
+  const response = await getPayments({ search: orderId, size: 10 });
+  const payment = (response.data?.payments ?? []).find(
+    (row) => row.reference === orderId,
+  );
+  return { status: 200, data: payment ?? null };
+};
 
 export class PayfastService extends BaseService {
   constructor() {

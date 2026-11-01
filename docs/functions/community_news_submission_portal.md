@@ -88,5 +88,5 @@ export const updateAnnouncementStatus = (id, status) =>
 - Reputation system for trusted community reporters
 - Draft saving for incomplete submissions
 - Rich text editor with formatting options
-- AI-assisted content improvement suggestions
+- Editor feedback on submitted content
 - Integration with social media for wider distribution

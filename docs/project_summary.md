@@ -5,31 +5,30 @@ Laudium Biz App is envisioned as the first truly digital news and community-enga
 
 - Streamline discovery and distribution of news
 - Empower residents and local businesses to both consume and contribute content
-- Provide modern tools (AI, analytics) to inform decisions and drive engagement
+- Provide modern tools (analytics) to inform decisions and drive engagement
 
 **2. Key Stakeholders & Audience**
 
 - **Residents & Community Contributors**: Everyday citizens submitting tips, stories, photos, and events
 - **Local Businesses & Advertisers**: Small shops, services, and entrepreneurs seeking targeted, affordable ad placements
-- **Editorial Team & Moderators**: Curators who refine AI-generated drafts, vet community submissions, and ensure quality
+- **Editorial Team & Moderators**: Editors who write and publish every article, vet community submissions, and ensure quality
 
 **3. Core Functionality**
 
-1. **AI-Assisted Article Management**
+1. **Admin-Authored Article Management**
 
-   - Auto-draft generation via GPT integration
-   - Intuitive editor for human review, fact-checking, and enrichment
+   - Every article is written, illustrated and published by an administrator
+   - Rich editor with cover images uploaded to object storage
 
-2. **Self-Service Advert Manager**
+2. **Admin-Authored Advert Manager**
 
-   - Customized ad creation and scheduling
-   - Allows local businesses to create, pay for using PayFast, and manage their ads without admin intervention.
+   - Administrators create, schedule and price every ad in the admin dashboard
    - Tiered “premium visibility” slots for featured placement
 
-3. **GPT-Powered Deep Search**
+3. **Search**
 
-   - Natural-language queries over archives and live content
-   - Keyword or conversational search for fast, relevant results
+   - Keyword search across articles, categories and tags
+   - Archive browsing by date, category and tag
 
 4. **Community News Submission Portal**
 
@@ -59,7 +58,7 @@ Laudium Biz App is envisioned as the first truly digital news and community-enga
 **4. Unique Differentiators**
 
 - **Community-First Design**: Blends professional journalism with grassroots reporting
-- **AI-Human Collaboration**: Speeds up drafting while preserving editorial integrity
+- **Human Editorial Ownership**: Every story is written and published by the editorial team
 - **Local Monetization Engine**: Affordable, scalable ad model fine­tuned for small businesses
 - **Platform Agnosticism**: Seamless transition between browser and Android environments
 
@@ -81,7 +80,7 @@ This summary provides a foundation for detailed technical and user documentation
 - **Technical Architecture & Stack**
 - **Component Breakdown**
 - **User Roles & Permissions**
-- **API Integrations (YouTube, GPT, Analytics)**
+- **API Integrations (YouTube, Analytics)**
 - **Ad Management Lifecycle**
 - **Submission Moderation Workflows**
 - **Search & Recommendation Algorithms**

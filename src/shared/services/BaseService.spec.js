@@ -1,56 +1,28 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
+import { BaseService } from "@/shared/services/BaseService.js";
 
-// The central HTTP client is the only collaborator; mock it at the boundary.
-vi.mock("@/services/api", () => ({
-  default: {
-    get: vi.fn(() => Promise.resolve({ data: {} })),
-    post: vi.fn(() => Promise.resolve({ data: {} })),
-    put: vi.fn(() => Promise.resolve({ data: {} })),
-    delete: vi.fn(() => Promise.resolve({ data: {} })),
-  },
-}));
+describe("shared/services/BaseService", () => {
+  it("keeps the resource name", () => {
+    const service = new BaseService("articles");
 
-import api from "@/services/api";
-import { BaseService } from "@/shared/services/BaseService";
-
-describe("BaseService", () => {
-  beforeEach(() => vi.clearAllMocks());
-
-  it("list() GETs /{resource} with the given params", () => {
-    new BaseService("articles").list({ page: 1 });
-    expect(api.get).toHaveBeenCalledWith("/articles", { params: { page: 1 } });
+    expect(service.resource).toBe("articles");
   });
 
-  it("list() defaults params to an empty object", () => {
-    new BaseService("ads").list();
-    expect(api.get).toHaveBeenCalledWith("/ads", { params: {} });
-  });
+  it("rejects the generic verbs until a domain service implements them", async () => {
+    const service = new BaseService("articles");
 
-  it("get() GETs /{resource}/{id}", () => {
-    new BaseService("x").get(5);
-    expect(api.get).toHaveBeenCalledWith("/x/5");
-  });
-
-  it("create() POSTs /{resource}/create with the payload", () => {
-    const payload = { title: "t" };
-    new BaseService("x").create(payload);
-    expect(api.post).toHaveBeenCalledWith("/x/create", payload);
-  });
-
-  it("update() PUTs /{resource}/{id} with the payload", () => {
-    const payload = { title: "t" };
-    new BaseService("x").update(2, payload);
-    expect(api.put).toHaveBeenCalledWith("/x/2", payload);
-  });
-
-  it("remove() DELETEs /{resource}/{id}", () => {
-    new BaseService("x").remove(3);
-    expect(api.delete).toHaveBeenCalledWith("/x/3");
-  });
-
-  it("defaults the resource segment to an empty string", () => {
-    const svc = new BaseService();
-    expect(svc.resource).toBe("");
-    expect(svc.api).toBe(api);
+    await expect(service.get()).rejects.toThrow("get() is not implemented");
+    await expect(service.getById("1")).rejects.toThrow(
+      "getById() is not implemented",
+    );
+    await expect(service.create({})).rejects.toThrow(
+      "create() is not implemented",
+    );
+    await expect(service.update("1", {})).rejects.toThrow(
+      "update() is not implemented",
+    );
+    await expect(service.remove("1")).rejects.toThrow(
+      "remove() is not implemented",
+    );
   });
 });

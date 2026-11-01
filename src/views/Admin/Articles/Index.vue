@@ -505,15 +505,8 @@ const publishAll = async () => {
                   </button>
 
                   <router-link
-                    v-if="hasRole('superadmin')"
-                    class="btn btn-outline-primary me-2"
-                    to="/admin/articles/prompts"
-                  >
-                    Manage AI Prompts
-                  </router-link>
-                  <router-link
                     class="btn btn-success"
-                    to="/admin/articles/prompt"
+                    to="/admin/articles/create"
                   >
                     Create New
                   </router-link>

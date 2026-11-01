@@ -193,43 +193,70 @@ describe("LatestNews.vue", () => {
     expect(wrapper.findAllComponents(StandardCardStub)).toHaveLength(0);
   });
 
-  it("news page renders a StandardCard per article and marks every 6th index featured", async () => {
-    // 13 articles -> indexes 0..12. index%6===0 at 0,6,12 -> featured.
+  it("news page renders a StandardCard per article", async () => {
     getters["articles/latestArticles"] = makeArticles(13);
     const wrapper = mountView({ page: "news" });
     await flushPromises();
 
     const cards = wrapper.findAllComponents(StandardCardStub);
     expect(cards).toHaveLength(13);
-    // index 0 featured (true branch), index 1 not featured (false branch).
-    expect(cards[0].props("isFeatured")).toBe(true);
-    expect(cards[1].props("isFeatured")).toBe(false);
-    expect(cards[6].props("isFeatured")).toBe(true);
-    expect(cards[12].props("isFeatured")).toBe(true);
     expect(cards[0].props("isTopStory")).toBe(true);
 
-    // Featured wrapper class present for featured indexes.
-    expect(wrapper.findAll(".grid-item-featured")).toHaveLength(3);
+    // Every article occupies exactly one cell, so the grid stays even.
+    expect(wrapper.findAll(".grid-item-featured")).toHaveLength(0);
   });
 
-  it("news page inserts a square AdArticle after every 6 articles and a banner after every 12", async () => {
-    // 12 articles -> indexes 0..11.
-    // Square ad: (index+1)%6===0 && index>0 -> index 5 and 11 -> 2 ads.
-    // Banner:   (index+1)%12===0 && index>0 -> index 11 -> 1 banner.
-    getters["articles/latestArticles"] = makeArticles(12);
+  it("news page interleaves ads between articles: article - ad - article - ad", async () => {
+    // 4 articles with 2 ads -> article, ad, article, ad, article, ad, article.
+    getters["articles/latestArticles"] = makeArticles(4);
+    getAds.mockResolvedValue({
+      data: { ads: [{ id: "ad1" }, { id: "ad2" }] },
+    });
+
     const wrapper = mountView({ page: "news" });
     await flushPromises();
 
-    const squareAds = wrapper.findAllComponents(AdArticleStub);
-    expect(squareAds).toHaveLength(2);
-    expect(squareAds[0].props("placement")).toBe("in_article_bottom");
-    expect(squareAds[0].props("adProvider")).toBe("direct");
+    const ads = wrapper.findAllComponents(PinAdCardStub);
+    expect(ads).toHaveLength(3);
+    expect(ads[0].props("ad")).toEqual({ id: "ad1" });
+    expect(ads[1].props("ad")).toEqual({ id: "ad2" });
+    expect(ads[2].props("ad")).toEqual({ id: "ad1" });
 
-    const banners = wrapper.findAllComponents(AdBannerStub);
-    expect(banners).toHaveLength(1);
-    expect(banners[0].props("size")).toBe("medium");
-    expect(banners[0].props("placement")).toBe("in_article_bottom");
-    expect(banners[0].props("adProvider")).toBe("google");
+    // Each ad takes the full space of one article card.
+    expect(wrapper.findAll(".grid-item-ad-card")).toHaveLength(3);
+
+    // The feed alternates: article, ad, article, ad, ...
+    const items = wrapper.findAll(".news-grid > *");
+    expect(items).toHaveLength(7);
+    expect(items[0].findComponent(StandardCardStub).exists()).toBe(true);
+    expect(items[1].findComponent(PinAdCardStub).exists()).toBe(true);
+    expect(items[2].findComponent(StandardCardStub).exists()).toBe(true);
+    expect(items[3].findComponent(PinAdCardStub).exists()).toBe(true);
+    expect(items[6].findComponent(StandardCardStub).exists()).toBe(true);
+  });
+
+  it("news page cycles ads when there are more articles than ads", async () => {
+    getters["articles/latestArticles"] = makeArticles(6);
+    getAds.mockResolvedValue({ data: { ads: [{ id: "ad1" }] } });
+
+    const wrapper = mountView({ page: "news" });
+    await flushPromises();
+
+    const ads = wrapper.findAllComponents(PinAdCardStub);
+    expect(ads).toHaveLength(5);
+    expect(ads[0].props("ad")).toEqual({ id: "ad1" });
+    expect(ads[4].props("ad")).toEqual({ id: "ad1" });
+  });
+
+  it("news page loads the grid ads for the news articles placement", async () => {
+    getters["articles/latestArticles"] = makeArticles(2);
+    const wrapper = mountView({ page: "news" });
+    await flushPromises();
+
+    expect(getAds).toHaveBeenCalledWith(
+      expect.objectContaining({ placement: "news_articles", status: "active" }),
+    );
+    expect(wrapper.findAllComponents(PinAdCardStub)).toHaveLength(0);
   });
 
   it("news page does NOT insert ad/banner at index 0 even though (0+1)%6 and the index>0 guard fails", async () => {
@@ -240,6 +267,7 @@ describe("LatestNews.vue", () => {
     await flushPromises();
 
     expect(wrapper.findAllComponents(StandardCardStub)).toHaveLength(1);
+    expect(wrapper.findAllComponents(PinAdCardStub)).toHaveLength(0);
     expect(wrapper.findAllComponents(AdArticleStub)).toHaveLength(0);
     expect(wrapper.findAllComponents(AdBannerStub)).toHaveLength(0);
   });

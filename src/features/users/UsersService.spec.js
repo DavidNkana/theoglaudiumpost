@@ -1,16 +1,20 @@
-// src/features/users/UsersService.spec.js
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { callsTo } from "../../../tests/helpers/supabaseMock.js";
 
-vi.mock("@/services/api", () => ({
-  default: {
-    get: vi.fn(),
-    post: vi.fn(),
-    put: vi.fn(),
-    delete: vi.fn(),
-  },
+const state = vi.hoisted(() => ({
+  tables: {},
+  builders: {},
+  session: null,
+  user: null,
 }));
 
-import api from "@/services/api";
+vi.mock("@/services/supabase.js", async () => {
+  const { buildSupabaseModule } = await import(
+    "../../../tests/helpers/supabaseModuleMock.js"
+  );
+  return buildSupabaseModule(state);
+});
+
 import {
   getUsers,
   getUser,
@@ -18,156 +22,86 @@ import {
   createUser,
   editUser,
   removeUser,
-  UsersService,
-  usersService,
-} from "@/features/users/UsersService";
-import defaultExport from "@/features/users/UsersService";
-import { BaseService } from "@/shared/services/BaseService";
+} from "@/features/users/UsersService.js";
 
-beforeEach(() => {
-  vi.clearAllMocks();
-});
+describe("features/users/UsersService", () => {
+  beforeEach(reset);
 
-describe("getUsers", () => {
-  it("uses provided values for every param", () => {
-    const resp = { data: [] };
-    api.get.mockReturnValue(resp);
+  it("lists accounts with pagination info", async () => {
+    state.tables.profiles = { data: [{ id: "u1", email: "a@b.co" }], error: null, count: 1 };
 
-    const result = getUsers({ page: 3, size: 25, search: "jane" });
+    const response = await getUsers({ size: 10 });
 
-    expect(api.get).toHaveBeenCalledTimes(1);
-    expect(api.get).toHaveBeenCalledWith(
-      "users?search=jane&size=25&page=3"
+    expect(response.status).toBe(200);
+    expect(response.data.users).toHaveLength(1);
+    expect(response.data.totalPages).toBe(1);
+  });
+
+  it("searches accounts by email", async () => {
+    state.tables.profiles = { data: [], error: null, count: 0 };
+
+    await getUsers({ search: "info" });
+
+    expect(callsTo(state.builders.profiles, "or")[0].args[0]).toContain(
+      "email.ilike.%info%",
     );
-    expect(result).toBe(resp);
   });
 
-  it("uses default values when called with an empty object", () => {
-    api.get.mockReturnValue("default-resp");
+  it("fetches a single account", async () => {
+    state.tables.profiles = { data: { id: "u1" }, error: null };
 
-    const result = getUsers({});
+    const response = await getUser("u1");
 
-    expect(api.get).toHaveBeenCalledWith("users?search=&size=10&page=0");
-    expect(result).toBe("default-resp");
+    expect(response.data.id).toBe("u1");
   });
 
-  it("uses default values when called with no arguments", () => {
-    api.get.mockReturnValue("no-arg-resp");
+  it("lists the roles an account can hold", async () => {
+    const response = await getRoles();
 
-    const result = getUsers();
-
-    expect(api.get).toHaveBeenCalledWith("users?search=&size=10&page=0");
-    expect(result).toBe("no-arg-resp");
-  });
-});
-
-describe("getUser", () => {
-  it("requests a single user by id", () => {
-    api.get.mockReturnValue("one");
-    expect(getUser(99)).toBe("one");
-    expect(api.get).toHaveBeenCalledWith("users/99");
-  });
-});
-
-describe("getRoles", () => {
-  it("requests the roles endpoint", () => {
-    api.get.mockReturnValue("roles");
-    expect(getRoles()).toBe("roles");
-    expect(api.get).toHaveBeenCalledWith("users/roles");
-  });
-});
-
-describe("createUser", () => {
-  it("posts to the create endpoint with data", () => {
-    const data = { name: "Jane", email: "a@b.c" };
-    api.post.mockReturnValue("created");
-    expect(createUser(data)).toBe("created");
-    expect(api.post).toHaveBeenCalledWith("users/create", data);
-  });
-});
-
-describe("editUser", () => {
-  it("puts data to the user id endpoint", () => {
-    const data = { name: "New" };
-    api.put.mockReturnValue("edited");
-    expect(editUser(5, data)).toBe("edited");
-    expect(api.put).toHaveBeenCalledWith("users/5", data);
-  });
-});
-
-describe("removeUser", () => {
-  it("deletes a user by id", () => {
-    api.delete.mockReturnValue("removed");
-    expect(removeUser(8)).toBe("removed");
-    expect(api.delete).toHaveBeenCalledWith("users/8");
-  });
-});
-
-describe("rejected (catch) paths via the API boundary", () => {
-  it("getUsers rejects when api.get rejects", async () => {
-    const err = new Error("network");
-    api.get.mockRejectedValue(err);
-    await expect(getUsers({})).rejects.toThrow("network");
+    expect(response.data.map((role) => role.name)).toEqual(["admin", "business"]);
   });
 
-  it("createUser rejects when api.post rejects", async () => {
-    api.post.mockRejectedValue(new Error("post-fail"));
-    await expect(createUser({})).rejects.toThrow("post-fail");
-  });
+  it("creates a profile for an account", async () => {
+    state.tables.profiles = { data: { id: "u1" }, error: null };
 
-  it("editUser rejects when api.put rejects", async () => {
-    api.put.mockRejectedValue(new Error("put-fail"));
-    await expect(editUser(1, {})).rejects.toThrow("put-fail");
-  });
+    const response = await createUser({ id: "u1", email: "a@b.co" });
 
-  it("removeUser rejects when api.delete rejects", async () => {
-    api.delete.mockRejectedValue(new Error("delete-fail"));
-    await expect(removeUser(1)).rejects.toThrow("delete-fail");
-  });
-});
-
-describe("UsersService class", () => {
-  it("extends BaseService and sets the users resource", () => {
-    const service = new UsersService();
-    expect(service).toBeInstanceOf(BaseService);
-    expect(service).toBeInstanceOf(UsersService);
-    expect(service.resource).toBe("users");
-    expect(service.api).toBe(api);
-  });
-
-  it("exposes the domain functions as prototype methods", () => {
-    expect(UsersService.prototype.getUsers).toBe(getUsers);
-    expect(UsersService.prototype.getUser).toBe(getUser);
-    expect(UsersService.prototype.getRoles).toBe(getRoles);
-    expect(UsersService.prototype.createUser).toBe(createUser);
-    expect(UsersService.prototype.editUser).toBe(editUser);
-    expect(UsersService.prototype.removeUser).toBe(removeUser);
-  });
-});
-
-describe("usersService singleton", () => {
-  it("is a UsersService instance and the default export", () => {
-    expect(usersService).toBeInstanceOf(UsersService);
-    expect(defaultExport).toBe(usersService);
-  });
-
-  it("can invoke a domain method through the singleton instance", () => {
-    api.get.mockReturnValue("via-singleton");
-
-    const result = usersService.getUser(123);
-
-    expect(result).toBe("via-singleton");
-    expect(api.get).toHaveBeenCalledWith("users/123");
-  });
-
-  it("can invoke an inherited BaseService method through the singleton", () => {
-    api.get.mockReturnValue("listed");
-
-    const result = usersService.list({ page: 1 });
-
-    expect(result).toBe("listed");
-    expect(api.get).toHaveBeenCalledWith("/users", {
-      params: { page: 1 },
+    expect(response.status).toBe(201);
+    expect(callsTo(state.builders.profiles, "insert")[0].args[0]).toMatchObject({
+      id: "u1",
+      role: "business",
     });
   });
+
+  it("refuses to create a profile without an account id", async () => {
+    await expect(createUser({ email: "a@b.co" })).rejects.toThrow(
+      "An account id is required",
+    );
+  });
+
+  it("updates an account", async () => {
+    state.tables.profiles = { data: { id: "u1" }, error: null };
+
+    const response = await editUser("u1", { full_name: "David" });
+
+    expect(response.status).toBe(200);
+    expect(callsTo(state.builders.profiles, "update")[0].args[0]).toEqual({
+      full_name: "David",
+    });
+  });
+
+  it("removes an account", async () => {
+    state.tables.profiles = { data: null, error: null };
+
+    const response = await removeUser("u1");
+
+    expect(response.status).toBe(200);
+  });
 });
+
+const reset = () => {
+  state.tables = {};
+  Object.keys(state.builders).forEach((key) => delete state.builders[key]);
+  state.session = null;
+  state.user = null;
+};

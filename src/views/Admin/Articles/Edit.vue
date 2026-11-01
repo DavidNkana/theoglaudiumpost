@@ -1,34 +1,23 @@
 <script setup>
+/**
+ * New script section for src/views/Admin/Articles/Edit.vue
+ * Admin-entered articles. No AI generation, no automated source finding,
+ * no fact-checking — the editor writes and uploads.
+ */
 import { ref, computed, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { QuillEditor } from "@vueup/vue-quill";
 import "@vueup/vue-quill/dist/vue-quill.snow.css";
-import { getArticle, removeArticle, editArticle, generateArticleThumbnail, findArticleSources, factCheckArticle } from "@/features/articles/ArticlesService";
+import { getArticle, removeArticle, editArticle } from "@/features/articles/ArticlesService";
+import { uploadMedia } from "@/features/media/MediaService";
 import { Modal } from "bootstrap";
 import { getCategories } from "@/features/categories/CategoriesService";
 import { getTags } from "@/features/tags/TagsService";
 import Swal from "sweetalert2";
 import TagSelector from "./Partials/TagSelector.vue";
-// @ModifiedByJunie 2025-12-10 - Added refine functionality imports
-import RefineArticleModal from "@/components/Modals/RefineArticleModal.vue";
-import { useRefinementHistory } from "@/composables/useRefinementHistory";
 
 const route = useRoute();
 const router = useRouter();
-
-// @ModifiedByJunie 2025-12-10 - Added refinement composable
-const {
-  refinementHistory,
-  isRefining,
-  loadRefinementHistory,
-  submitRefinement: submitRefinementRequest,
-  clearHistory
-} = useRefinementHistory();
-
-// Refs for modal
-const refineModalRef = ref(null);
-const refineInput = ref('');
-const sourceId = ref(null); // Source article ID for refinement
 
 const article = ref({
   id: null,
@@ -39,6 +28,7 @@ const article = ref({
   thumbnailUrl: "",
   coverImage: "",
   thumbnailImage: "",
+  coverId: null,
   categoryId: "",
   articleType: "featured",
   archived: false,
@@ -56,7 +46,7 @@ const error = ref(null);
 const validationErrors = ref({});
 const isSubmitting = ref(false);
 const isDeleting = ref(false);
-const isGeneratingThumbnail = ref(false);
+const isUploadingImage = ref(false);
 const categories = ref([]);
 const tags = ref([]);
 const autoGenerateSlug = ref(true);
@@ -64,11 +54,7 @@ const authorName = ref("Unknown");
 const coverBase64 = ref("");
 const thumbnailBase64 = ref("");
 const imageUpdated = ref(false);
-const newSourceUrl = ref(''); // @ModifiedByJunie 2025-12-10 - For adding new sources
-const isFindingSources = ref(false); // @ModifiedByJunie 2025-12-10 - For AI source finding
-const isFactChecking = ref(false);
-const skipFactCheck = ref(false);
-const imageProvider = ref('gpt'); // @ModifiedByJunie 2025-12-10 - For GPT vs MiniMax image generation
+const newSourceUrl = ref('');
 
 const deleteModal = ref(null);
 let modalInstance = null;
@@ -76,8 +62,6 @@ let modalInstance = null;
 // Fetch article and related data on component mount
 onMounted(async () => {
   try {
-    // Load article data
-
     const articleId = route.params.id;
 
     const response = await getArticle(articleId);
@@ -89,13 +73,13 @@ onMounted(async () => {
       ...response.data,
       articleType: response.data.article_type || "featured",
       coverImage: response.data.cover?.file,
+      coverId: response.data.cover_id ?? response.data.cover?.id ?? null,
       thumbnailImage: response.data.thumbnail?.file,
-      audioUrl: response.data.audio?.file || null,  // @ModifiedByJunie 2025-12-10 - Added audio
+      audioUrl: response.data.audio?.file || null,
       scheduledFor: response.data.scheduled_for,
-      categoryId: response.data?.category?.id,
-      tags: response.data.tags?.map((tag) => tag.id),
+      categoryId: response.data?.category?.id ?? response.data.category_id ?? "",
+      tags: response.data.tags?.map((tag) => tag.id) ?? [],
       sources: response.data.sources || [],
-      // authorId: response.data?.author?.id,
     };
 
     coverBase64.value = response.data.cover?.file;
@@ -109,10 +93,10 @@ onMounted(async () => {
     }
 
     const res = await getCategories();
-    categories.value = res.data;
+    categories.value = res.data?.categories ?? res.data ?? [];
 
     const resp = await getTags();
-    tags.value = resp.data;
+    tags.value = resp.data ?? [];
 
     loading.value = false;
   } catch (err) {
@@ -166,16 +150,39 @@ const generateSlug = () => {
     .substring(0, 255); // Respect DB limit
 };
 
-const handleImage = (e) => {
-  const file = e.target.files[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = async () => {
-      coverBase64.value = reader.result;
-      thumbnailBase64.value = await generateThumbnailFromImage(reader.result);
-      imageUpdated.value = true;
-    };
-    reader.readAsDataURL(file);
+/**
+ * Uploads a new cover image and links it to the article.
+ */
+const handleImage = async (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  isUploadingImage.value = true;
+
+  try {
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    coverBase64.value = dataUrl;
+    thumbnailBase64.value = await generateThumbnailFromImage(dataUrl);
+
+    const response = await uploadMedia(file, article.value.articleType || "latest");
+    article.value.coverId = response.data?.id ?? null;
+    article.value.coverImage = response.data?.file ?? "";
+    imageUpdated.value = true;
+  } catch (error) {
+    console.error("Error uploading image:", error);
+    Swal.fire({
+      title: "Error!",
+      text: "Failed to upload the image. Please try again.",
+      icon: "error",
+      confirmButtonText: "OK",
+    });
+  } finally {
+    isUploadingImage.value = false;
   }
 };
 
@@ -211,66 +218,35 @@ function generateThumbnailFromImage(base64) {
   });
 }
 
-// Generate AI thumbnail using OpenAI's gpt-image-1 model or MiniMax
-// @ModifiedByJunie 2025-12-10 - Added imageProvider parameter for GPT vs MiniMax selection
-const generateThumbnail = async () => {
-  if (!article.value.title || !article.value.articleType) {
-    alert("Please add a title and select an article type first");
-    return;
-  }
-
-  try {
-    isGeneratingThumbnail.value = true;
-
-    // Use the article title as the prompt parameter as required
-    const prompt = article.value.title;
-
-    // Call the API with the article title as prompt, article type, and selected image provider
-    const response = await generateArticleThumbnail(prompt, article.value.articleType, imageProvider.value);
-
-    coverBase64.value = "data:image/png;base64," + response.data;
-    thumbnailBase64.value = await generateThumbnailFromImage(coverBase64.value);
-    imageUpdated.value = true; // Mark image as updated so it gets uploaded to Cloudinary
-  } catch (error) {
-    console.error("Error generating thumbnail:", error);
-    alert(
-      "Failed to generate thumbnail. Please try again or enter a URL manually."
-    );
-  } finally {
-    isGeneratingThumbnail.value = false;
-  }
-};
-
 // Format date for display
 const formatDateTime = (datetime) => {
   if (!datetime) return "N/A";
 
   const date = new Date(datetime);
-  return date.toLocaleString();
+  return date.toLocaleString("en-ZA", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 };
 
-// Get category name by ID
+// Get category name from category id
 const getCategoryName = (categoryId) => {
-  const category = categories.value.find((c) => c.id === parseInt(categoryId));
-  return category ? category.name : "Unknown";
+  const category = categories.value.find((cat) => cat.id === categoryId);
+  return category?.name || "Uncategorized";
 };
 
 // Handle status change
 const handleStatusChange = () => {
-  // If status is scheduled but no date is set, set to current date + 1 day
   if (article.value.status === "scheduled" && !article.value.scheduledFor) {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setMinutes(0); // Reset minutes
+    tomorrow.setMinutes(0);
     article.value.scheduledFor = tomorrow.toISOString().slice(0, 16);
   }
 };
-
-// Quick save as draft
-// const updateStatusToDraft = () => {
-//   article.value.status = "draft";
-//   updateArticle();
-// };
 
 // Navigate back to articles list
 const goBack = () => {
@@ -303,11 +279,6 @@ const deleteArticle = async () => {
   }
 };
 
-// Helper to check if a URL is a Cloudinary URL
-const isCloudinaryUrl = (url) => {
-  return url && typeof url === 'string' && url.includes('cloudinary.com');
-};
-
 // Validate form
 const validateForm = () => {
   const errors = {};
@@ -337,13 +308,14 @@ const validateForm = () => {
     errors.coverImage = "Please include an image";
   }
 
-  // For published/scheduled articles, must have a Cloudinary URL or a new image to upload
+  // Published and scheduled articles must have a stored cover image
   if (article.value.status !== "draft") {
-    const hasExistingCloudinaryImage = isCloudinaryUrl(article.value.coverImage);
-    const hasNewImageToUpload = imageUpdated.value && coverBase64.value;
+    const hasStoredCover = Boolean(article.value.coverId);
+    const hasNewImage = imageUpdated.value && Boolean(coverBase64.value);
 
-    if (!hasExistingCloudinaryImage && !hasNewImageToUpload) {
-      errors.coverImage = "Published articles require an image uploaded to Cloudinary. Please upload or generate an image.";
+    if (!hasStoredCover && !hasNewImage) {
+      errors.coverImage =
+        "Published articles require an uploaded cover image. Please upload an image.";
     }
   }
 
@@ -359,7 +331,7 @@ const validateForm = () => {
     }
   }
 
-  // @ModifiedByJunie 2025-12-10 - Sources validation - articles must have at least one source
+  // Sources validation - articles must have at least one source
   if (!article.value.sources || article.value.sources.length === 0) {
     errors.sources = "At least one source is required for all articles";
   }
@@ -368,359 +340,33 @@ const validateForm = () => {
   return Object.keys(errors).length === 0;
 };
 
-const escapeHtml = (value) => {
-  if (!value) return "";
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-};
-
-const buildFactCheckHtml = (issues = []) => {
-  if (!Array.isArray(issues) || issues.length === 0) {
-    return "<p>Fact check flagged potential issues in this draft.</p>";
-  }
-  return `
-    <p>Please review the following items:</p>
-    <ul>
-      ${issues
-        .map((issue) => `
-          <li>
-            <strong>Claim:</strong> ${escapeHtml(issue.claim || "Unknown")}
-            <br />
-            <strong>Verdict:</strong> ${escapeHtml(issue.verdict || "Unverified")}
-            <br />
-            <strong>Reason:</strong> ${escapeHtml(issue.reasoning || "No details provided")}
-          </li>
-        `)
-        .join("")}
-    </ul>
-  `;
-};
-
-const buildFindSourcesDebugHtml = (debug) => {
-  if (!debug || typeof debug !== "object") {
-    return "";
-  }
-
-  const sections = [];
-
-  if (debug.parseError) {
-    sections.push(
-      `<p><strong>Parse error:</strong> ${escapeHtml(debug.parseError)}</p>`
-    );
-  }
-
-  if (Array.isArray(debug.toolQueries) && debug.toolQueries.length > 0) {
-    sections.push(
-      `<p><strong>Search queries:</strong> ${escapeHtml(debug.toolQueries.join(", "))}</p>`
-    );
-  }
-
-  if (Array.isArray(debug.toolTags) && debug.toolTags.length > 0) {
-    sections.push(
-      `<p><strong>Search tags:</strong> ${escapeHtml(debug.toolTags.join(", "))}</p>`
-    );
-  }
-
-  if (typeof debug.toolResultCount === "number") {
-    sections.push(
-      `<p><strong>Search results count:</strong> ${debug.toolResultCount}</p>`
-    );
-  }
-
-  if (Array.isArray(debug.toolResultUrls) && debug.toolResultUrls.length > 0) {
-    const urls = debug.toolResultUrls.map((url) => escapeHtml(url));
-    sections.push(
-      `<p><strong>Sample search URLs:</strong></p><ul>${urls
-        .map((url) => `<li>${url}</li>`)
-        .join("")}</ul>`
-    );
-  }
-
-  if (Array.isArray(debug.filteredOut) && debug.filteredOut.length > 0) {
-    const limited = debug.filteredOut.slice(0, 10);
-    sections.push(
-      `<p><strong>Filtered out:</strong></p><ul>${limited
-        .map(
-          (item) =>
-            `<li>${escapeHtml(item.source || "Unknown")} (${escapeHtml(
-              item.reason || "unknown"
-            )})</li>`
-        )
-        .join("")}</ul>`
-    );
-    if (debug.filteredOut.length > 10) {
-      sections.push(
-        `<p>Showing 10 of ${debug.filteredOut.length} filtered items.</p>`
-      );
-    }
-  }
-
-  if (debug.extractedJson) {
-    sections.push(
-      `<p><strong>Extracted JSON:</strong></p><pre>${escapeHtml(
-        debug.extractedJson
-      )}</pre>`
-    );
-  }
-
-  if (debug.rawResponseSnippet) {
-    sections.push(
-      `<p><strong>Raw response snippet:</strong></p><pre>${escapeHtml(
-        debug.rawResponseSnippet
-      )}</pre>`
-    );
-  }
-
-  if (sections.length === 0) {
-    return "";
-  }
-
-  return `<div style="text-align:left">${sections.join("")}</div>`;
-};
-
-const runFactCheck = async () => {
-  if (!article.value.title) {
-    return { ok: false, confirm: false };
-  }
-  if (skipFactCheck.value) {
-    return { ok: true, confirm: true };
-  }
-  isFactChecking.value = true;
-  let loadingShown = false;
-  let loadingClosed = false;
-  const closeFactCheckLoader = () => {
-    if (!loadingShown || loadingClosed) {
-      return;
-    }
-    Swal.close();
-    loadingClosed = true;
-  };
-  try {
-    Swal.fire({
-      title: "Fact checking",
-      text: "Busy fact checking...",
-      allowOutsideClick: false,
-      allowEscapeKey: false,
-      didOpen: () => {
-        Swal.showLoading();
-      },
-    });
-    loadingShown = true;
-    const plainContent = article.value.content
-      ? article.value.content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()
-      : "";
-    const response = await factCheckArticle({
-      title: article.value.title,
-      summary: article.value.summary || "",
-      content: plainContent,
-    });
-    const result = response?.data;
-    if (result?.hasIssues) {
-      closeFactCheckLoader();
-      const decision = await Swal.fire({
-        title: "Fact check warning",
-        html: buildFactCheckHtml(result.issues),
-        icon: "warning",
-        showCancelButton: true,
-        showDenyButton: true,
-        confirmButtonText: "Save anyway",
-        denyButtonText: "Refine with fixes",
-        cancelButtonText: "Cancel",
-      });
-      if (decision.isDenied) {
-        await refineWithFactCheckIssues(result.issues);
-        return { ok: false, confirm: false };
-      }
-      return { ok: decision.isConfirmed, confirm: decision.isConfirmed };
-    }
-    closeFactCheckLoader();
-    return { ok: true, confirm: false };
-  } catch (error) {
-    closeFactCheckLoader();
-    const errorFactCheck = error.response?.data?.factCheck;
-    const errorMessage =
-      error.response?.data?.message ||
-      error.message ||
-      "Could not verify facts. Please try again.";
-    await Swal.fire({
-      title: "Fact check failed",
-      html: errorFactCheck?.issues
-        ? buildFactCheckHtml(errorFactCheck.issues)
-        : `<p>${escapeHtml(errorMessage)}</p>`,
-      icon: "error",
-      confirmButtonText: "OK",
-    });
-    return { ok: false, confirm: false };
-  } finally {
-    isFactChecking.value = false;
-    closeFactCheckLoader();
-  }
-};
-
-const buildFactCheckRefinePrompt = (issues) => {
-  const formattedIssues = (issues || [])
-    .map((issue, index) => {
-      const claim = issue?.claim ? `Claim: ${issue.claim}` : "Claim: (missing)";
-      const verdict = issue?.verdict ? `Verdict: ${issue.verdict}` : "";
-      const reasoning = issue?.reasoning ? `Reason: ${issue.reasoning}` : "";
-      const sources = Array.isArray(issue?.sources) && issue.sources.length > 0
-        ? `Sources: ${issue.sources.join(", ")}`
-        : "";
-      return [`${index + 1}. ${claim}`, verdict, reasoning, sources].filter(Boolean).join("\n");
-    })
-    .join("\n\n");
-
-  return [
-    "Refine the article to address the fact-check issues below.",
-    "Fix or remove incorrect claims, and clearly mark anything unverified.",
-    "Keep the tone professional and preserve the existing structure.",
-    "Ensure each paragraph remains wrapped in <p> tags.",
-    "Return ONLY JSON with fields: title, article, summary, slug, sources.",
-    "",
-    "FACT-CHECK ISSUES:",
-    formattedIssues || "No issues provided.",
-    "",
-    "Start with { and end with }. Do not include markdown or extra text."
-  ].join("\n");
-};
-
-const refineWithFactCheckIssues = async (issues) => {
-  const refinementSourceId = sourceId.value || article.value.id;
-  if (!refinementSourceId) {
-    await Swal.fire({
-      title: "Refine unavailable",
-      text: "Fact-check refinement needs a source article to refine against.",
-      icon: "info",
-      confirmButtonText: "OK",
-    });
-    return false;
-  }
-
-  const prompt = buildFactCheckRefinePrompt(issues);
-  const result = await submitRefinementRequest({
-    sourceId: refinementSourceId,
-    articleId: article.value.id,
-    prompt,
-    provider: "minimax",
-    currentContent: article.value.content
-  });
-
-  if (result.success) {
-    article.value.content = result.content;
-    Swal.fire({
-      title: "Refined",
-      text: "Applied fact-check fixes to the article. Please review and save.",
-      icon: "success",
-      confirmButtonText: "OK",
-    });
-    return true;
-  }
-
-  Swal.fire({
-    title: "Refine failed",
-    text: result.error || "Could not refine the article with fact-check fixes.",
-    icon: "error",
-    confirmButtonText: "OK",
-  });
-  return false;
-};
-
+// Remove image
 const removeImage = () => {
   coverBase64.value = null;
   thumbnailBase64.value = null;
+  article.value.coverId = null;
+  article.value.coverImage = "";
 };
 
 // Update article
-// @ModifiedByJunie 2025-12-10 - Fixed image saving: always send existing URL or new base64
-const submitArticle = async (confirmFactCheck, coverImageToSend, thumbnailImageToSend) => {
-  return editArticle(article.value.id, {
-    ...article.value,
-    confirmFactCheck: Boolean(confirmFactCheck || skipFactCheck.value),
-    coverImage: coverImageToSend,
-    thumbnailImage: thumbnailImageToSend,
-    scheduledFor:
-      article.value.status === "draft"
-        ? null
-        : article.value.scheduledFor || new Date().toISOString(),
-  });
-};
-
-const handleFactCheckConflict = async (error, coverImageToSend, thumbnailImageToSend) => {
-  const data = error.response?.data;
-  if (error.response?.status !== 409 || !data?.factCheck) {
-    return false;
-  }
-
-  const decision = await Swal.fire({
-    title: "Fact check warning",
-    html: buildFactCheckHtml(data.factCheck.issues),
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonText: "Save anyway",
-    cancelButtonText: "Cancel",
-  });
-
-  if (!decision.isConfirmed) {
-    return true;
-  }
-
-  await submitArticle(true, coverImageToSend, thumbnailImageToSend);
-  article.value.updated_at = new Date().toISOString();
-  Swal.fire("Article", "Article updated successfully!");
-  router.push("/admin/articles");
-  return true;
-};
-
 const updateArticle = async () => {
   if (!validateForm()) {
     return;
   }
 
-  const factCheckResult = await runFactCheck();
-  if (!factCheckResult.ok) {
-    return;
-  }
-
   isSubmitting.value = true;
 
-  let coverImageToSend = null;
-  let thumbnailImageToSend = null;
-
   try {
-    // Determine what to send for coverImage:
-    // - If we have coverBase64 data (either new base64 or existing URL), send it
-    // - The backend handles both base64 and URLs
-    // Debug logging - comprehensive
-    console.log('=== updateArticle DEBUG ===');
-    console.log('imageUpdated:', imageUpdated.value);
-    console.log('coverBase64.value:', coverBase64.value ? `[${coverBase64.value.length} chars]` : 'NULL/UNDEFINED');
-    console.log('thumbnailBase64.value:', thumbnailBase64.value ? `[${thumbnailBase64.value.length} chars]` : 'NULL/UNDEFINED');
-    console.log('article.value.coverImage:', article.value.coverImage);
-
-    if (coverBase64.value) {
-      const isBase64 = coverBase64.value.startsWith('data:');
-      const isUrl = coverBase64.value.startsWith('http');
-      console.log('coverBase64 isBase64:', isBase64, 'isUrl:', isUrl);
-      console.log('coverBase64 preview:', coverBase64.value.substring(0, 80));
-    }
-
-    // Simplified logic: if we have coverBase64, send it (could be base64 or URL)
-    if (coverBase64.value) {
-      coverImageToSend = coverBase64.value;
-      thumbnailImageToSend = thumbnailBase64.value || null;
-      console.log('Sending coverImage, length:', coverImageToSend.length);
-    } else {
-      console.log('No coverImage to send');
-    }
-
-    console.log('Final coverImageToSend:', coverImageToSend ? `[${coverImageToSend.length} chars]` : 'NULL');
-    console.log('=== END DEBUG ===');
-
-    await submitArticle(factCheckResult.confirm, coverImageToSend, thumbnailImageToSend);
+    await editArticle(article.value.id, {
+      ...article.value,
+      cover_id: article.value.coverId ?? null,
+      coverImage: coverBase64.value || article.value.coverImage || "",
+      thumbnailImage: thumbnailBase64.value || "",
+      scheduledFor:
+        article.value.status === "draft"
+          ? null
+          : article.value.scheduledFor || new Date().toISOString(),
+    });
 
     // Update last modified date
     article.value.updated_at = new Date().toISOString();
@@ -731,16 +377,14 @@ const updateArticle = async () => {
   } catch (err) {
     console.error("Error updating article:", err);
 
-    if (await handleFactCheckConflict(err, coverImageToSend, thumbnailImageToSend)) {
-      return;
-    }
-
     if (err.response && err.response.data.errors) {
       validationErrors.value = err.response.data.errors;
     } else {
       Swal.fire({
         title: "Error!",
-        text: "Failed to update article. Please try again.",
+        text:
+          err.response?.data?.message ||
+          "Failed to update article. Please try again.",
         icon: "error",
         confirmButtonText: "OK",
       });
@@ -752,10 +396,8 @@ const updateArticle = async () => {
 
 const handleTagsChange = (tags) => {
   console.log("Tags changed:", tags);
-  // Here you could send this to your backend or update your form state
 };
 
-// @ModifiedByJunie 2025-12-10 - Source management methods
 // Add a new source URL
 const addSource = () => {
   if (!newSourceUrl.value.trim()) return;
@@ -765,10 +407,10 @@ const addSource = () => {
     new URL(newSourceUrl.value);
   } catch {
     Swal.fire({
-      title: 'Invalid URL',
-      text: 'Please enter a valid URL (e.g., https://example.com/article)',
-      icon: 'error',
-      confirmButtonText: 'OK'
+      title: "Invalid URL",
+      text: "Please enter a valid URL (e.g., https://example.com/article)",
+      icon: "error",
+      confirmButtonText: "OK"
     });
     return;
   }
@@ -776,10 +418,10 @@ const addSource = () => {
   // Check for duplicates
   if (article.value.sources.includes(newSourceUrl.value)) {
     Swal.fire({
-      title: 'Duplicate Source',
-      text: 'This source URL has already been added',
-      icon: 'warning',
-      confirmButtonText: 'OK'
+      title: "Duplicate Source",
+      text: "This source URL has already been added",
+      icon: "warning",
+      confirmButtonText: "OK"
     });
     return;
   }
@@ -795,124 +437,6 @@ const addSource = () => {
 // Remove a source by index
 const removeSource = (index) => {
   article.value.sources.splice(index, 1);
-};
-
-// @ModifiedByJunie 2025-12-10 - Find sources using AI
-const findSources = async () => {
-  if (!article.value.title) {
-    Swal.fire({
-      title: 'Title Required',
-      text: 'Please add an article title before finding sources',
-      icon: 'warning',
-      confirmButtonText: 'OK'
-    });
-    return;
-  }
-
-  isFindingSources.value = true;
-
-  try {
-    // Strip HTML from content for better AI processing
-    const plainContent = article.value.content
-      ? article.value.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
-      : '';
-
-    const response = await findArticleSources({
-      title: article.value.title,
-      summary: article.value.summary || '',
-      content: plainContent,
-      debug: true
-    });
-
-    const payload = response?.data;
-    if (!payload || typeof payload.success !== "boolean") {
-      throw new Error("Unexpected response from source finder.");
-    }
-
-    const foundSources = Array.isArray(payload.sources) ? payload.sources : [];
-
-    if (!payload.success || foundSources.length === 0) {
-      const debugHtml = buildFindSourcesDebugHtml(payload.debug);
-      Swal.fire({
-        title: 'No Sources Found',
-        html: debugHtml
-          ? `<p>${escapeHtml(payload.message || 'Could not find relevant sources for this article.')}</p>${debugHtml}`
-          : 'Could not find relevant sources for this article. Try adding sources manually.',
-        icon: 'info',
-        confirmButtonText: 'OK'
-      });
-      return;
-    }
-
-    // Add found sources to the list (avoid duplicates)
-    let addedCount = 0;
-    for (const source of foundSources) {
-      if (!article.value.sources.includes(source)) {
-        article.value.sources.push(source);
-        addedCount++;
-      }
-    }
-
-    // Clear validation error if present
-    if (validationErrors.value.sources) {
-      delete validationErrors.value.sources;
-    }
-
-    Swal.fire({
-      title: 'Sources Found!',
-      text: `Added ${addedCount} new source${addedCount !== 1 ? 's' : ''} to your article.`,
-      icon: 'success',
-      confirmButtonText: 'OK'
-    });
-  } catch (error) {
-    console.error('Error finding sources:', error);
-    const payload = error.response?.data;
-    const debugHtml = buildFindSourcesDebugHtml(payload?.debug);
-    Swal.fire({
-      title: 'Error',
-      html: debugHtml
-        ? `<p>${escapeHtml(payload?.message || error.message || 'Failed to find sources. Please try again.')}</p>${debugHtml}`
-        : error.response?.data?.message || 'Failed to find sources. Please try again.',
-      icon: 'error',
-      confirmButtonText: 'OK'
-    });
-  } finally {
-    isFindingSources.value = false;
-  }
-};
-
-// @ModifiedByJunie 2025-12-10 - Handle refinement submission
-const handleRefinementSubmit = async (refinementData) => {
-  // Handle both old format (string) and new format (object with prompt and provider)
-  const prompt = typeof refinementData === 'string' ? refinementData : refinementData.prompt;
-  const provider = typeof refinementData === 'string' ? 'minimax' : refinementData.provider;
-
-  const result = await submitRefinementRequest({
-    sourceId: sourceId.value || article.value.id, // Use sourceId if available, otherwise use article ID
-    articleId: article.value.id,
-    prompt: prompt,
-    provider: provider,
-    currentContent: article.value.content
-  });
-
-  if (result.success) {
-    article.value.content = result.content;
-    refineModalRef.value?.hide();
-
-    Swal.fire({
-      title: 'Success!',
-      text: 'Article refined successfully using ' + provider.toUpperCase(),
-      icon: 'success',
-      confirmButtonText: 'OK',
-    });
-  } else {
-    Swal.fire({
-      title: 'Error!',
-      text: result.error || 'Failed to refine article. Please try again.',
-      icon: 'error',
-      confirmButtonText: 'OK',
-    });
-  }
 };
 </script>
 
@@ -1030,21 +554,11 @@ const handleRefinementSubmit = async (refinementData) => {
           </div>
 
           <!-- Content - Rich Text Editor -->
-          <!-- @ModifiedByJunie 2025-12-10 - Added Refine button -->
           <div class="mb-4">
             <div class="d-flex justify-content-between align-items-center mb-2">
               <label for="content" class="form-label mb-0"
                 >Content<span class="text-danger">*</span></label
               >
-              <button
-                type="button"
-                class="btn btn-outline-info btn-sm"
-                @click="refineModalRef?.show()"
-                :disabled="!article.content || isRefining"
-              >
-                <i class="bi bi-magic me-1"></i>
-                {{ isRefining ? "Refining..." : "Refine with AI" }}
-              </button>
             </div>
             <div :class="{ 'is-invalid': validationErrors.content }">
               <QuillEditor
@@ -1093,30 +607,13 @@ const handleRefinementSubmit = async (refinementData) => {
                 class="form-control"
                 :class="{ 'is-invalid': validationErrors.coverImage }"
               />
-              <!-- @ModifiedByJunie 2025-12-10 - Added image provider dropdown -->
-              <select
-                class="form-select"
-                style="max-width: 120px;"
-                v-model="imageProvider"
-                :disabled="isGeneratingThumbnail"
+              <span
+                v-if="isUploadingImage"
+                class="input-group-text text-nowrap"
               >
-                <option value="gpt">GPT</option>
-                <option value="minimax">MiniMax</option>
-              </select>
-              <button
-                class="btn btn-outline-secondary"
-                type="button"
-                :disabled="isGeneratingThumbnail || !article.title || !article.articleType"
-                @click="generateThumbnail"
-              >
-                <span
-                  v-if="isGeneratingThumbnail"
-                  class="spinner-border spinner-border-sm me-2"
-                  role="status"
-                  aria-hidden="true"
-                ></span>
-                {{ isGeneratingThumbnail ? "Generating..." : "AI Thumbnail" }}
-              </button>
+                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                Uploading
+              </span>
               <div class="invalid-feedback" v-if="validationErrors.coverImage">
                 {{ validationErrors.coverImage }}
               </div>
@@ -1285,20 +782,6 @@ const handleRefinementSubmit = async (refinementData) => {
               <label class="form-label mb-0">
                 Sources<span class="text-danger">*</span>
               </label>
-              <button
-                type="button"
-                class="btn btn-outline-info btn-sm"
-                @click="findSources"
-                :disabled="!article.title || isFindingSources"
-              >
-                <span
-                  v-if="isFindingSources"
-                  class="spinner-border spinner-border-sm me-1"
-                  role="status"
-                ></span>
-                <i v-else class="bi bi-search me-1"></i>
-                {{ isFindingSources ? "Finding..." : "Find Sources with AI" }}
-              </button>
             </div>
             <div class="sources-container" :class="{ 'is-invalid': validationErrors.sources }">
               <!-- Existing Sources List -->
@@ -1348,21 +831,6 @@ const handleRefinementSubmit = async (refinementData) => {
               {{ validationErrors.sources }}
             </div>
             <small class="text-muted">Add at least one source URL for article credibility</small>
-          </div>
-
-          <div class="form-check mb-4">
-            <input
-              type="checkbox"
-              class="form-check-input"
-              v-model="skipFactCheck"
-              id="skipFactCheck"
-            />
-            <label class="form-check-label" for="skipFactCheck">
-              Don't fact check (save anyway)
-            </label>
-            <div class="form-text text-muted">
-              Skips AI fact-checking and bypasses the server check.
-            </div>
           </div>
 
           <!-- Metadata -->
@@ -1480,15 +948,6 @@ const handleRefinementSubmit = async (refinementData) => {
         </div>
       </div>
     </div>
-
-    <!-- @ModifiedByJunie 2025-12-10 - Added Refine Article Modal -->
-    <RefineArticleModal
-      ref="refineModalRef"
-      v-model:refineInput="refineInput"
-      :isLoading="isRefining"
-      :refinementHistory="refinementHistory"
-      @submit="handleRefinementSubmit"
-    />
   </div>
 </template>
 <style scoped>

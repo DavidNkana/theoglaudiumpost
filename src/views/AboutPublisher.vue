@@ -44,16 +44,14 @@
         details about data we collect and how it is used.
       </p>
 
-      <h2 class="h4 mt-4">AI-Generated Content Disclosure</h2>
+      <h2 class="h4 mt-4">Editorial Standards</h2>
       <p>
-        Some articles published on Laudium Post may be generated with the assistance of artificial intelligence (AI) tools
-        including ChatGPT and Google Gemini. While AI helps us create initial drafts and summaries, all
-        content is reviewed by our editorial team for accuracy, context, and relevance to our community. Articles that are
-        AI-assisted will include proper attribution and links to sources where applicable.
+        Every article published on Laudium Post is written and entered by our own editorial team. We do not use
+        artificial intelligence to generate, draft or publish stories. Each article is checked for accuracy, context and
+        relevance to our community before it goes live, and every story carries the sources our journalists worked from.
       </p>
       <p>
-        We are committed to transparency in our content creation process and will clearly label AI-assisted content. If
-        you have questions about how we use AI in our editorial process, please contact us at
+        If you have questions about how we produce our content, please contact us at
         <a href="mailto:info@lauduimbiz.co.za">info@lauduimbiz.co.za</a>.
       </p>
     </div>

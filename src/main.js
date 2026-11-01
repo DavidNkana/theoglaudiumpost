@@ -29,7 +29,6 @@ import App from "./App.vue";
 // Import application modules
 import router from "@/router";
 import store from "@/store/index.js";
-import axiosPlugin from "./plugins/axios";
 import capacitorPlugin from "./plugins/capacitor";
 
 // Import third-party libraries
@@ -78,8 +77,6 @@ Sentry.init({
 app.use(store);
 // Register Vue Router for navigation
 app.use(router);
-// Register axios for HTTP requests
-app.use(axiosPlugin);
 // Register Capacitor plugin for native functionality
 app.use(capacitorPlugin);
 // Register OneSignal for push notifications

@@ -142,20 +142,20 @@ describe("AdminLayout.vue", () => {
     expect(wrapper.find(".sidebar-menu-item-stub").exists()).toBe(false);
   });
 
-  it("renders superadmin sidebar (SidebarMenuItem + Manage AI Prompts) when hasRole('superadmin')", () => {
+  it("renders superadmin sidebar (SidebarMenuItem) when hasRole('superadmin')", () => {
     state.superadmin = true;
     const wrapper = mountLayout();
 
     // Superadmin: SidebarMenuItem stubs render (Ads + Announcements menus).
     expect(wrapper.findAll(".sidebar-menu-item-stub").length).toBeGreaterThan(0);
-    // "Manage AI Prompts" router-link appears.
+    // Plain non-superadmin Ads/Announcements links are gone.
     const linkTargets = wrapper
       .findAllComponents(RouterLinkStub)
       .map((l) => l.props("to"));
-    expect(linkTargets).toContain("/admin/articles/prompts");
-    // Plain non-superadmin Ads/Announcements links are gone.
     expect(linkTargets).not.toContain("/admin/ads");
     expect(linkTargets).not.toContain("/admin/announcements");
+    // The AI prompt manager is gone from the admin navigation.
+    expect(linkTargets).not.toContain("/admin/articles/prompts");
   });
 
   it("toggles the sidebar open/closed, swapping the toggler icon and backdrop", async () => {

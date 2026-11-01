@@ -32,6 +32,10 @@ coverage
 .env
 .env.*
 !.env.example
+# The production build needs the public Supabase connection values. These are
+# public client identifiers, not secrets; real environment variables override
+# this file.
+!.env.production
 
 # Local mobile/build outputs and bundles
 android/

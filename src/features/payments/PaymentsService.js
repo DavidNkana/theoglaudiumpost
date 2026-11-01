@@ -1,91 +1,188 @@
 /**
  * features/payments/PaymentsService.js
  *
- * Service module for managing payments in the Laudium Biz application.
+ * Ad payment records, backed by Supabase.
  *
- * This module:
- * - Provides functions to fetch, create, update, and delete payments
- * - Handles payment status tracking
- * - Interacts with the backend API for payment operations
+ * Payments are recorded by administrators against the ads they have entered.
  */
 
-import api from "@/services/api";
+import { supabase, ok, created, rethrow } from "@/services/supabase.js";
 import { BaseService } from "@/shared/services/BaseService";
 
+const PAYMENT_COLUMNS =
+  "id, ad_id, campaign_id, business_id, business_name, amount, currency, status, " +
+  "reference, payment_method, paid_at, created_at, updated_at";
+
 /**
- * Fetches payments with filtering and pagination
- *
- * @param {Object} options - Query options
- * @param {number} options.page - Page number for pagination (default: 0)
- * @param {number} options.size - Number of payments per page (default: 10)
- * @param {string} options.search - Search query for filtering payments
- * @param {string} options.status - Payment status filter (e.g., "paid", "pending")
- * @returns {Promise} - Promise that resolves to the filtered payments
+ * Fetches payments with filtering and pagination.
  */
-export const getPayments = ({
+export const getPayments = async ({
   businessId = 0,
   page = 0,
   size = 10,
   search = "",
   status = "",
-}) =>
-  api.get(
-    `/payments?businessId=${businessId}&search=${search}&status=${status}&size=${size}&page=${page}`
-  );
+} = {}) => {
+  try {
+    const from = Number(page) * Number(size);
+    const to = from + Number(size) - 1;
+
+    let query = supabase
+      .from("payments")
+      .select(PAYMENT_COLUMNS, { count: "exact" })
+      .range(from, to);
+
+    if (businessId) query = query.eq("business_id", businessId);
+    if (status) query = query.eq("status", status);
+    if (search) {
+      const term = String(search).replace(/[%,]/g, " ").trim();
+      if (term) {
+        query = query.or(
+          `business_name.ilike.%${term}%,reference.ilike.%${term}%`,
+        );
+      }
+    }
+
+    query = query.order("created_at", { ascending: false });
+
+    const { data, error, count } = await query;
+    if (error) throw error;
+
+    const total = count ?? data?.length ?? 0;
+    const totalPages = Number(size) > 0 ? Math.ceil(total / Number(size)) : 0;
+
+    return ok({ payments: data ?? [], total, totalPages });
+  } catch (error) {
+    return rethrow(error, "Failed to fetch payments");
+  }
+};
+
+/** Fetches a single payment. */
+export const getPayment = async (id) => {
+  try {
+    const { data, error } = await supabase
+      .from("payments")
+      .select(PAYMENT_COLUMNS)
+      .eq("id", id)
+      .maybeSingle();
+    if (error) throw error;
+    return ok(data);
+  } catch (error) {
+    return rethrow(error, "Failed to fetch payment");
+  }
+};
+
+/** Records a payment. */
+export const createPayment = async (data) => {
+  try {
+    const { data: newPayment, error } = await supabase
+      .from("payments")
+      .insert({
+        ad_id: data.ad_id ?? data.adId ?? null,
+        campaign_id: data.campaign_id ?? data.campaignId ?? null,
+        business_id: data.business_id ?? data.businessId ?? null,
+        business_name: data.business_name ?? data.businessName ?? null,
+        amount: data.amount ?? 0,
+        currency: data.currency ?? "ZAR",
+        status: data.status ?? "pending",
+        reference: data.reference ?? null,
+        payment_method: data.payment_method ?? data.paymentMethod ?? null,
+        paid_at: data.paid_at ?? data.paidAt ?? null,
+      })
+      .select(PAYMENT_COLUMNS)
+      .single();
+    if (error) throw error;
+    return created(newPayment);
+  } catch (error) {
+    return rethrow(error, "Failed to create payment");
+  }
+};
+
+/** Updates a payment. */
+export const updatePayment = async (id, data) => {
+  try {
+    const { data: updated, error } = await supabase
+      .from("payments")
+      .update({
+        ad_id: data.ad_id ?? data.adId ?? null,
+        campaign_id: data.campaign_id ?? data.campaignId ?? null,
+        business_id: data.business_id ?? data.businessId ?? null,
+        business_name: data.business_name ?? data.businessName ?? null,
+        amount: data.amount ?? 0,
+        currency: data.currency ?? "ZAR",
+        status: data.status ?? "pending",
+        reference: data.reference ?? null,
+        payment_method: data.payment_method ?? data.paymentMethod ?? null,
+        paid_at: data.paid_at ?? data.paidAt ?? null,
+      })
+      .eq("id", id)
+      .select(PAYMENT_COLUMNS)
+      .single();
+    if (error) throw error;
+    return ok(updated);
+  } catch (error) {
+    return rethrow(error, "Failed to update payment");
+  }
+};
+
+/** Deletes a payment. */
+export const removePayment = async (id) => {
+  try {
+    const { error } = await supabase.from("payments").delete().eq("id", id);
+    if (error) throw error;
+    return ok(true);
+  } catch (error) {
+    return rethrow(error, "Failed to delete payment");
+  }
+};
+
+/** Updates the status of a payment. */
+export const updatePaymentStatus = async (id, status) => {
+  try {
+    const { data: updated, error } = await supabase
+      .from("payments")
+      .update({
+        status,
+        paid_at: status === "paid" ? new Date().toISOString() : null,
+      })
+      .eq("id", id)
+      .select(PAYMENT_COLUMNS)
+      .single();
+    if (error) throw error;
+    return ok(updated);
+  } catch (error) {
+    return rethrow(error, "Failed to update payment status");
+  }
+};
 
 /**
- * Fetches a single payment by its ID
+ * Fetches the receipt for a payment.
  *
- * @param {number|string} id - The payment ID
- * @returns {Promise} - Promise that resolves to the payment data
+ * Receipts are generated by the payment provider (PayFast), not by us, so the
+ * receipt URL is what the browser opens.
  */
-export const getPayment = (id) => api.get(`/payments/${id}`);
+export const getReceiptPdf = async (id) => {
+  try {
+    const payment = await getPayment(id);
+    const reference = payment.data?.reference;
+    if (!reference) {
+      const err = new Error("No receipt available for this payment");
+      err.response = { status: 404, data: { message: "No receipt available" } };
+      throw err;
+    }
 
-/**
- * Creates a new payment
- *
- * @param {Object} data - The payment data
- * @returns {Promise} - Promise that resolves to the created payment
- */
-export const createPayment = (data) => api.post("/payments/create", data);
+    const response = await fetch(reference);
+    if (!response.ok) {
+      const err = new Error(`Failed to load receipt (${response.status})`);
+      err.response = { status: response.status, data: { message: err.message } };
+      throw err;
+    }
 
-/**
- * Updates an existing payment
- *
- * @param {number|string} id - The payment ID
- * @param {Object} data - The updated payment data
- * @returns {Promise} - Promise that resolves to the updated payment
- */
-export const updatePayment = (id, data) => api.put(`/payments/${id}`, data);
-
-/**
- * Deletes a payment
- *
- * @param {number|string} id - The payment ID
- * @returns {Promise} - Promise that resolves when the payment is deleted
- */
-export const removePayment = (id) => api.delete(`/payments/${id}`);
-
-/**
- * Updates the status of a payment
- *
- * @param {number|string} id - The payment ID
- * @param {string} status - The new status (e.g., "paid", "pending", "cancelled")
- * @returns {Promise} - Promise that resolves to the updated payment
- */
-export const updatePaymentStatus = (id, status) =>
-  api.put(`/payments/${id}/status`, { status });
-
-/**
- * Downloads the receipt/invoice PDF for a payment as a blob. Routes through
- * the central API client so the correct base URL and auth header are applied
- * (callers must not fetch the receipt path directly).
- *
- * @param {number|string} id - The payment ID
- * @returns {Promise} - Promise that resolves to the PDF blob response
- */
-export const getReceiptPdf = (id) =>
-  api.get(`/payments/${id}/receipt`, { responseType: "blob" });
+    return { status: 200, data: await response.blob() };
+  } catch (error) {
+    return rethrow(error, "Failed to fetch receipt");
+  }
+};
 
 export class PaymentsService extends BaseService {
   constructor() {
@@ -93,7 +190,6 @@ export class PaymentsService extends BaseService {
   }
 }
 
-// expose the domain functions as instance methods (they don't use `this`)
 Object.assign(PaymentsService.prototype, {
   getPayments,
   getPayment,
