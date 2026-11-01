@@ -94,18 +94,6 @@
               </a>
             </li>
 
-            <li class="nav-item">
-              <a
-                  href="#"
-                  class="nav-link"
-                  @click.prevent="navigateTo('/admin/source-articles')"
-                  :class="{ 'active': $route.path.startsWith('/admin/source-articles') }"
-              >
-                <i class="bi bi-file-earmark-text me-2"></i>
-                <span>Source Articles</span>
-              </a>
-            </li>
-
             <li v-if="!hasRole('superadmin')" class="nav-item">
               <router-link
                   to="/admin/ads"
