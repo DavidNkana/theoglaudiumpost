@@ -170,6 +170,28 @@ export const uploadMedia = async (file, storyType = "latest") => {
 };
 
 /**
+ * Converts a data URL into a Blob without fetching it.
+ *
+ * The Content Security Policy does not allow `data:` in connect-src, so a
+ * data URL cannot be fetched. Decoding it directly avoids that entirely.
+ *
+ * @param {string} dataUrl - A "data:image/..." URL
+ * @returns {Blob} The decoded image
+ */
+export const dataUrlToBlob = (dataUrl) => {
+  const [header, base64] = String(dataUrl).split(",");
+  const mime = /:(.*?);/.exec(header)?.[1] || "image/png";
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+
+  return new Blob([bytes], { type: mime });
+};
+
+/**
  * Uploads an image supplied as a data URL and returns the stored media row.
  *
  * The admin ad form hands over base64 images; they are persisted to storage
@@ -187,9 +209,7 @@ export const uploadDataUrl = async (dataUrl, storyType = "ad") => {
       throw err;
     }
 
-    const response = await fetch(dataUrl);
-    const blob = await response.blob();
-
+    const blob = dataUrlToBlob(dataUrl);
     const extension = blob.type?.split("/")[1] || "png";
     const file = new File([blob], `upload-${Date.now()}.${extension}`, {
       type: blob.type || "image/png",

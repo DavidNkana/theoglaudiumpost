@@ -521,45 +521,77 @@ const toAdPayload = async (data = {}, { partial = false } = {}) => {
     if (value !== undefined) payload[key] = value;
   };
 
+  // The admin form and the business area name these fields differently, so
+  // every known spelling is accepted.
+  const pick = (...keys) => {
+    for (const key of keys) {
+      if (data[key] !== undefined && data[key] !== null && data[key] !== "") {
+        return data[key];
+      }
+    }
+    return undefined;
+  };
+
+  const paymentInfo = data.payment_info || data.paymentInfo || {};
+
   assign("title", data.title);
-  assign("description", data.description);
-  assign("business_name", data.business_name ?? data.businessName);
-  assign("business_id", data.business_id ?? data.businessId);
-  assign("campaign_id", data.campaign_id ?? data.campaignId);
-  assign("video_url", data.video_url ?? data.videoUrl);
-  assign("click_url", data.click_url ?? data.linkUrl);
-  assign("status", data.status);
-  assign("amount", data.amount);
-  assign("payment_status", data.payment_status ?? data.paymentStatus);
-  assign("payment_reference", data.payment_reference ?? data.reference);
-  assign("payment_method", data.payment_method ?? data.paymentMethod);
-  assign("customer_name", data.customer_name ?? data.customerName);
-  assign("customer_email", data.customer_email ?? data.customerEmail);
-  assign("customer_phone", data.customer_phone ?? data.customerPhone);
-  assign("notes", data.notes);
-  assign("tags", data.tags);
+  assign("description", pick("description"));
+  assign("business_name", pick("business_name", "businessName"));
+  assign("business_id", pick("business_id", "businessId"));
+  assign("campaign_id", pick("campaign_id", "campaignId"));
+  assign("video_url", pick("video_url", "videoUrl"));
+  assign("click_url", pick("click_url", "clickUrl", "linkUrl"));
+  assign("status", pick("status"));
+  assign("amount", pick("amount", "total_cost", "totalCost"));
+  assign(
+    "payment_status",
+    pick("payment_status", "paymentStatus") ?? paymentInfo.paymentStatus,
+  );
+  assign(
+    "payment_reference",
+    pick("payment_reference", "paymentReference", "reference") ??
+      paymentInfo.reference,
+  );
+  assign(
+    "payment_method",
+    pick("payment_method", "paymentMethod") ?? paymentInfo.paymentMethod,
+  );
+  assign(
+    "customer_name",
+    pick("customer_name", "customerName") ?? paymentInfo.customerName,
+  );
+  assign(
+    "customer_email",
+    pick("customer_email", "customerEmail") ?? paymentInfo.customerEmail,
+  );
+  assign("customer_phone", pick("customer_phone", "customerPhone"));
+  assign("notes", pick("notes"));
+  assign("tags", pick("tags"));
 
   // These may be cleared on purpose, so they are only written when supplied.
   if (has("image_url") || has("imageUrl")) {
-    payload.image_url = data.image_url ?? data.imageUrl ?? null;
+    payload.image_url = pick("image_url", "imageUrl") ?? null;
   }
-  if (has("placement_date") || has("startTime")) {
-    payload.placement_date = data.placement_date ?? data.startTime ?? null;
+  if (has("placement_date") || has("placementDate") || has("startTime")) {
+    payload.placement_date = pick("placement_date", "placementDate", "startTime") ?? null;
   }
-  if (has("expiry_date") || has("endTime")) {
-    payload.expiry_date = data.expiry_date ?? data.endTime ?? null;
+  if (has("expiry_date") || has("expiryDate") || has("endTime")) {
+    payload.expiry_date = pick("expiry_date", "expiryDate", "endTime") ?? null;
   }
 
   if (data.images !== undefined) {
     payload.images = await persistAdImages(data.images);
   }
 
-  const placement = data.placement ?? data.placement_name ?? null;
-  if (placement) {
-    const ids = await getPlacementIds(placement);
-    if (ids[placement]) payload.placement_id = ids[placement];
-  } else if (has("placementId")) {
-    payload.placement_id = data.placementId ?? null;
+  const placementId = pick("placement_id", "placementId");
+  if (placementId) {
+    payload.placement_id = placementId;
+  } else {
+    const placement = pick("placement", "placement_name");
+    if (placement) {
+      const ids = await getPlacementIds(placement);
+      if (ids[placement]) payload.placement_id = ids[placement];
+    }
   }
 
   if (!partial) {
