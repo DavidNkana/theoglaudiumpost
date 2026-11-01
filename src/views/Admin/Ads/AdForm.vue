@@ -121,29 +121,37 @@ const initializeForm = async () => {
     placements.value = [mainPlacement];
 
     // Default selection and pricing
-    form.value.placementId = mainPlacement.id;
-    selectedPlacement.value = mainPlacement;
-    // Set default dates: active for 7 days from tomorrow
     const today = new Date();
     const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
     const end = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate() + 6);
-    form.value.startTime = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth()+1).padStart(2,'0')}-${String(tomorrow.getDate()).padStart(2,'0')}`;
-    form.value.endTime = `${end.getFullYear()}-${String(end.getMonth()+1).padStart(2,'0')}-${String(end.getDate()).padStart(2,'0')}`;
-    form.value.totalCost = (900).toFixed(2);
-    form.value.enabled = true;
+
+    /**
+     * Applies the defaults for a new advertisement.
+     *
+     * This is applied after resetForm(), because resetForm() replaces the whole
+     * form object and would otherwise discard these values.
+     */
+    const applyNewAdDefaults = () => {
+      form.value.placementId = mainPlacement.id;
+      selectedPlacement.value = mainPlacement;
+      form.value.startTime = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth()+1).padStart(2,'0')}-${String(tomorrow.getDate()).padStart(2,'0')}`;
+      form.value.endTime = `${end.getFullYear()}-${String(end.getMonth()+1).padStart(2,'0')}-${String(end.getDate()).padStart(2,'0')}`;
+      form.value.totalCost = (900).toFixed(2);
+      form.value.enabled = true;
+      form.value.paymentInfo = { amount: '900.00', status: 'COMPLETE', reference: '' };
+    };
 
     businesses.value = businessesRes.data.businesses || [];
     campaigns.value = campaignsRes.data.campaigns || [];
     tags.value = tagsRes.data || [];
-    // Sync payment amount with fixed price
-    if (!form.value.paymentInfo) form.value.paymentInfo = { amount: '', status: 'COMPLETE', reference: '' };
-    form.value.paymentInfo.amount = '900.00';
 
     // If editing, load ad data
     if (isEdit.value) {
       await loadAdData();
     } else {
+      // Start from a clean form, then apply the defaults for a new ad.
       resetForm();
+      applyNewAdDefaults();
     }
   } catch (error) {
     console.error('Error loading form data:', error);

@@ -1070,10 +1070,17 @@ describe("AdForm.vue", () => {
     await radios[1].setValue(); // eft
     expect(wrapper.vm.form.paymentMethod).toBe("eft");
 
-    // Payment amount (readonly but still v-model-bound).
+    // Payment amount (readonly but still v-model-bound). It is located by its
+    // "Amount" label: the total cost field carries the same value.
     const amountInput = wrapper
       .findAll("input.form-control")
-      .find((i) => i.element.value === wrapper.vm.form.paymentInfo.amount);
+      .find((i) => {
+        const label = i.element
+          .closest("div")
+          ?.querySelector("label")
+          ?.textContent?.trim();
+        return label === "Amount";
+      });
     await amountInput.setValue("123.45");
     expect(wrapper.vm.form.paymentInfo.amount).toBe("123.45");
 
