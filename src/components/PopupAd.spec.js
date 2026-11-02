@@ -83,7 +83,8 @@ describe("PopupAd", () => {
 
     expect(wrapper.find(".popup-container").exists()).toBe(false);
     expect(getAllAdByPlacement).toHaveBeenCalledWith("pop_up");
-    expect(getAdByPlacement).toHaveBeenCalledWith("popup");
+    // The fallback uses the real placement name, so the filter still applies.
+    expect(getAdByPlacement).toHaveBeenCalledWith("pop_up");
   });
 
   it("falls back to single ad (with files) when getAllAdByPlacement returns non-array", async () => {
