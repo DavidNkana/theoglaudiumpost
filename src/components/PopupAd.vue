@@ -147,7 +147,7 @@ const fetchAds = async () => {
     }
 
     // If getAllAdByPlacement didn't return usable data, fall back to single ad
-    const response = await getAdByPlacement("popup");
+    const response = await getAdByPlacement("pop_up");
 
     if (response.data) {
       ads.value = [response.data];
