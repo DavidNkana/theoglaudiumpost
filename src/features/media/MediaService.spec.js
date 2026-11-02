@@ -42,6 +42,8 @@ describe("features/media/MediaService", () => {
 
     expect(response.status).toBe(200);
     expect(response.data.file).toBe("https://cdn.test/latest/cover.jpg");
+    // The image components read `url`.
+    expect(response.data.url).toBe("https://cdn.test/latest/cover.jpg");
   });
 
   it("falls back to the media row when no story variant exists", async () => {

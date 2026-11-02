@@ -50,7 +50,10 @@ export const getMediaById = async (id, storyType) => {
       throw err;
     }
 
-    return ok({ ...data, file: publicMediaUrl(data.storage_path || data.file) });
+    const publicUrl = publicMediaUrl(data.storage_path || data.file);
+
+    // `url` is the field the image components read; `file` is the stored path.
+    return ok({ ...data, file: publicUrl, url: publicUrl });
   } catch (error) {
     return rethrow(error, "Failed to fetch media");
   }
