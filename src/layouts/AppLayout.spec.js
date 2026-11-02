@@ -40,9 +40,6 @@ vi.mock("@/components/BottomNav.vue", () => ({
 vi.mock("@/components/PopupAd.vue", () => ({
   default: { name: "PopupAd", template: "<div class='popup-ad-stub' />" },
 }));
-vi.mock("@/components/BottomBannerAd.vue", () => ({
-  default: { name: "BottomBannerAd", template: "<div class='bottom-banner-ad-stub' />" },
-}));
 
 function mountLayout({ drawerOpen = false } = {}) {
   const closeDrawer = vi.fn((state) => {
@@ -84,7 +81,8 @@ describe("AppLayout.vue", () => {
     expect(wrapper.find(".header-stub").exists()).toBe(true);
     expect(wrapper.find(".router-view-stub").exists()).toBe(true);
     expect(wrapper.find(".popup-ad-stub").exists()).toBe(true);
-    expect(wrapper.find(".bottom-banner-ad-stub").exists()).toBe(true);
+    // The fixed bottom banner ad has been removed from the layout.
+    expect(wrapper.find(".bottom-ad").exists()).toBe(false);
     expect(wrapper.find(".site-footer-desktop").exists()).toBe(true);
     expect(wrapper.find(".footer-stub").exists()).toBe(true);
     expect(wrapper.find(".bottom-nav-stub").exists()).toBe(true);
