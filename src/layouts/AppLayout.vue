@@ -10,7 +10,6 @@ import ScrollToTop from "@/components/ScrollToTop.vue";
 import Footer from "@/components/Footer.vue";
 import BottomNav from "@/components/BottomNav.vue";
 import PopupAd from "@/components/PopupAd.vue";
-import BottomBannerAd from "@/components/BottomBannerAd.vue";
 import { SHOW_ADS } from "@/config/app";
 
 const showAds = SHOW_ADS;
@@ -50,7 +49,6 @@ onBeforeUnmount(() => {
       </div>
     </main>
     <PopupAd />
-    <BottomBannerAd />
 
     <!-- Full footer on desktop; on the app/mobile its links live in the drawer -->
     <div class="site-footer-desktop">
@@ -165,11 +163,6 @@ body.drawer-open {
   /* Keep page content clear of the fixed bottom tab bar. */
   .app-content {
     padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
-  }
-
-  /* A bottom banner ad stacks ABOVE the tab bar (standard app placement). */
-  .bottom-ad {
-    bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   /* Hide the marketing CTA ticker for a clean native feel
