@@ -428,7 +428,7 @@ describe("AdBanner.vue", () => {
     expect(content.attributes("style") || "").not.toContain("padding-bottom");
   });
 
-  it("adContentStyle uses ad.aspect_ratio, sidebar max-height, and vertical (no max-height) branch", async () => {
+  it("adContentStyle lets the creative size the slot", async () => {
     getAllAdByPlacement.mockResolvedValue(
       resp([
         {
@@ -447,13 +447,12 @@ describe("AdBanner.vue", () => {
     await settle();
 
     const style = wrapper.find(".ad-content").attributes("style");
-    // paddingBottom = (2/1)*100 = 200%
-    expect(style).toContain("padding-bottom: 200%");
-    // vertical ad -> max-height: none
-    expect(style).toContain("max-height: none");
+    // The slot no longer reserves a fixed aspect box: the creative sizes it.
+    expect(style).not.toContain("padding-bottom");
+    expect(style).toContain("max-height: 420px");
   });
 
-  it("adContentStyle small size branch (horizontal -> 150px max-height)", async () => {
+  it("adContentStyle small size branch (260px max-height)", async () => {
     getAllAdByPlacement.mockResolvedValue(
       resp([
         {
@@ -472,10 +471,10 @@ describe("AdBanner.vue", () => {
     await settle();
 
     const style = wrapper.find(".ad-content").attributes("style");
-    expect(style).toContain("max-height: 150px");
+    expect(style).toContain("max-height: 260px");
   });
 
-  it("adContentStyle medium size branch (horizontal -> 200px max-height)", async () => {
+  it("adContentStyle medium size branch (420px max-height)", async () => {
     getAllAdByPlacement.mockResolvedValue(
       resp([
         {
@@ -495,10 +494,10 @@ describe("AdBanner.vue", () => {
     await settle();
 
     const style = wrapper.find(".ad-content").attributes("style");
-    expect(style).toContain("max-height: 200px");
+    expect(style).toContain("max-height: 420px");
   });
 
-  it("adContentStyle large size branch (horizontal -> default 250px max-height)", async () => {
+  it("adContentStyle large size branch (520px max-height)", async () => {
     getAllAdByPlacement.mockResolvedValue(
       resp([
         {
@@ -517,7 +516,7 @@ describe("AdBanner.vue", () => {
     await settle();
 
     const style = wrapper.find(".ad-content").attributes("style");
-    expect(style).toContain("max-height: 250px");
+    expect(style).toContain("max-height: 520px");
   });
 
   it("startAdRotation timer preloads next ad images and rotates (nextAd present, with id)", async () => {

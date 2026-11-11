@@ -109,7 +109,7 @@ import {
   trackClick,
   trackImpression,
 } from "@/features/ads/AdsService";
-import { getAdDimensions, HOME_BANNER, delay } from "@/utils";
+import { HOME_BANNER, delay } from "@/utils";
 import { ref, onMounted, computed, watch, onBeforeUnmount } from "vue";
 import { getMediaObjectUrl } from "@/features/media/MediaService";
 import { SHOW_ADS } from "@/config/app";
@@ -431,40 +431,24 @@ const closeAd = () => {
  * Uses the placement to get the correct aspect ratio
  */
 const adContentStyle = computed(() => {
-  // Get the aspect ratio for this placement
-  const aspectRatio =
-    ad.value?.aspect_ratio || getAdDimensions(props.placement);
-
-  // If no aspect ratio is available, return empty style
-  if (!aspectRatio) return {};
-
-  // Parse the aspect ratio (e.g., "4:1" -> [4, 1])
-  const [width, height] = aspectRatio.split(":").map(Number);
-
-  // Calculate padding-bottom percentage to maintain aspect ratio
-  const paddingBottom = (height / width) * 100;
-
-  // Determine if this is a horizontal or vertical ad based on aspect ratio
-  const isHorizontalAd = width > height;
-
-  // Set appropriate max-height based on placement and size
-  let maxHeight = "250px"; // Default max height
-
-  if (props.placement.includes("sidebar")) {
-    maxHeight = "400px"; // Taller for sidebar ads
-  } else if (props.size === "small") {
-    maxHeight = "150px";
-  } else if (props.size === "medium") {
-    maxHeight = "200px";
-  }
+  // The advertisement is shown at its own size: the creative fills the space
+  // it is given and the slot grows to match. Reserving a fixed aspect box and
+  // fitting the picture inside it left a small picture floating in a large
+  // empty card.
+  const maxHeight = (() => {
+    if (props.size === "small") return "260px";
+    if (props.size === "medium") return "420px";
+    return "520px";
+  })();
 
   return {
     position: "relative",
     width: "100%",
-    height: "0",
-    paddingBottom: `${paddingBottom}%`,
     overflow: "hidden",
-    maxHeight: isHorizontalAd ? maxHeight : "none", // Only apply max-height to horizontal ads
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "flex-start",
+    maxHeight,
   };
 });
 
@@ -474,11 +458,11 @@ const adContentStyle = computed(() => {
  */
 const adImageStyle = computed(() => {
   return {
-    position: "absolute",
-    top: "0",
-    left: "0",
-    width: "100%",
-    height: "100%",
+    position: "static",
+    width: "auto",
+    height: "auto",
+    maxWidth: "100%",
+    maxHeight: "100%",
     objectFit: "contain",
   };
 });
@@ -605,21 +589,20 @@ const hasMultipleAds = computed(() => {
 }
 
 .ad-card {
-  display: flex;
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  display: inline-flex;
+  position: relative;
+  max-width: 100%;
+  max-height: 100%;
   overflow: hidden;
   background-color: #ffffff;
 }
 
 .ad-image {
-  width: 100%;
-  height: 100%;
+  width: auto;
+  height: auto;
   object-fit: contain;
   flex: auto;
+  max-width: 100%;
   max-height: 100%;
 }
 
