@@ -8,6 +8,7 @@ import { mount, flushPromises } from "@vue/test-utils";
 vi.mock("@/features/ads/AdsService", () => ({
   getAdByPlacement: vi.fn(),
   getAdByPlacementAndTags: vi.fn(),
+  getAds: vi.fn(),
   getAllAdByPlacement: vi.fn(),
   trackClick: vi.fn(),
   trackImpression: vi.fn(),
@@ -32,6 +33,7 @@ vi.mock("@/utils", () => ({
 import AdBanner from "@/components/AdBanner.vue";
 import {
   getAdByPlacement,
+  getAds,
   getAdByPlacementAndTags,
   getAllAdByPlacement,
   trackClick,
@@ -166,6 +168,20 @@ describe("AdBanner.vue", () => {
     await settle();
 
     expect(wrapper.find(".ad-container").exists()).toBe(false);
+  });
+
+  it("falls back to the advertisements an administrator entered when the placement is empty", async () => {
+    getAllAdByPlacement.mockResolvedValue({ data: [] });
+    getAdByPlacement.mockResolvedValue({ data: null });
+    getAds.mockResolvedValue({
+      data: { ads: [{ id: "ad1", title: "Admin ad", image: "img-1" }] },
+    });
+
+    const wrapper = mount(AdBanner, { props: { placement: "sidebar_top" } });
+    await settle();
+
+    expect(getAds).toHaveBeenCalledWith({ status: "active", size: 20 });
+    expect(wrapper.find(".ad-container").exists()).toBe(true);
   });
 
   it("hides the details block when placement === HOME_BANNER", async () => {

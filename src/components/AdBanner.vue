@@ -104,6 +104,7 @@
 import {
   getAdByPlacement,
   getAdByPlacementAndTags,
+  getAds,
   getAllAdByPlacement,
   trackClick,
   trackImpression,
@@ -266,7 +267,6 @@ const fetchAd = async () => {
 
       return;
     }
-    console.log("No ads:", data);
     // If getAllAdByPlacement didn't return usable data, fall back to single ad
     const response =
       tags && tags?.length > 0
@@ -284,6 +284,26 @@ const fetchAd = async () => {
       if (response.data?.id) trackImpression(response.data.id);
 
       // Check if the ad has multiple images
+      checkAndStartImageRotation();
+      return;
+    }
+
+    // Nothing is filed under this placement. Fall back to the advertisements an
+    // administrator has entered, so a slot is never empty while there are ads
+    // running. A placement that has its own ads always wins.
+    const fallbackResponse = await getAds({ status: "active", size: 20 });
+    const fallbackAds = fallbackResponse.data?.ads ?? [];
+
+    if (fallbackAds.length > 0) {
+      ads.value = fallbackAds;
+      fetched.value = true;
+
+      await loadAdImages();
+
+      if (fallbackAds.length > 1) {
+        startAdRotation();
+      }
+
       checkAndStartImageRotation();
     }
   } catch (error) {
