@@ -18,7 +18,7 @@ import AdBusinessSummary from "./Partials/AdBusinessSummary.vue";
         <p class="text-muted">Welcome back, Admin User!</p>
       </div>
       <div>
-        <router-link to="/admin/articles/prompt" class="btn btn-success">
+        <router-link to="/admin/articles/create" class="btn btn-success">
           <i class="bi bi-plus-lg me-1"></i>
           New Article
         </router-link>

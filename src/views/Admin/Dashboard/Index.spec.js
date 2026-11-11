@@ -56,12 +56,12 @@ describe("Admin/Dashboard/Index.vue", () => {
     wrapper.unmount();
   });
 
-  it("renders a New Article router-link pointing at the prompt route", () => {
+  it("renders a New Article router-link pointing at the article editor", () => {
     const wrapper = factory();
 
     const link = wrapper.findComponent(RouterLinkStub);
     expect(link.exists()).toBe(true);
-    expect(link.props("to")).toBe("/admin/articles/prompt");
+    expect(link.props("to")).toBe("/admin/articles/create");
     expect(link.text()).toContain("New Article");
     expect(wrapper.find("a .bi-plus-lg").exists()).toBe(true);
 

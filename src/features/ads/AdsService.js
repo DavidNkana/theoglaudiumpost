@@ -70,15 +70,28 @@ const withPlacement = async (ad) => {
  * Normalises an ad row for the UI: `files` is the image list the banner
  * component rotates through, `image_url` the primary creative.
  */
-const toAd = (ad) => ({
-  ...withAliases(ad),
-  files: Array.isArray(ad.images) ? ad.images : ad.images ? [ad.images] : [],
-  image_url: ad.image_url ?? (Array.isArray(ad.images) ? ad.images[0] : null) ?? null,
-  // The placement is exposed by name as well as id: the interface addresses
-  // placements by name ("main_page_ad").
-  placement_name: ad.placement?.name ?? ad.placement_name ?? null,
-  placement_info: ad.placement?.placement_info ?? ad.placement_info ?? null,
-});
+const toAd = (ad) => {
+  // The placement is exposed as the location key the interface expects (a
+  // string, e.g. "main_page_ad"), with the name and the description beside it.
+  const placementName =
+    typeof ad.placement === "string"
+      ? ad.placement
+      : (ad.placement?.name ?? ad.placement_name ?? null);
+
+  const placementInfo =
+    typeof ad.placement === "object"
+      ? (ad.placement?.placement_info ?? ad.placement_info ?? null)
+      : (ad.placement_info ?? null);
+
+  return {
+    ...withAliases(ad),
+    files: Array.isArray(ad.images) ? ad.images : ad.images ? [ad.images] : [],
+    image_url: ad.image_url ?? (Array.isArray(ad.images) ? ad.images[0] : null) ?? null,
+    placement: placementName,
+    placement_name: placementName,
+    placement_info: placementInfo,
+  };
+};
 
 /**
  * Applies the ad visibility window (active, started, not expired).

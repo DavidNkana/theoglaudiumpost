@@ -392,7 +392,7 @@ const publishAll = async () => {
             <div
               class="d-lg-none col-12 col-md col-lg-12 col-xl ms-xl-auto text-end"
             >
-              <router-link class="btn btn-success" to="/admin/articles/prompt">
+              <router-link class="btn btn-success" to="/admin/articles/create">
                 Create New
               </router-link>
             </div>
