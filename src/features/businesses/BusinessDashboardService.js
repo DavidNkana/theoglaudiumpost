@@ -101,7 +101,7 @@ export const getBusinessPlacementData = async (id) => {
 
     const buckets = new Map();
     (data ?? []).forEach((ad) => {
-      const name = ad.placement?.name ?? "Unassigned";
+      const name = ad.placement?.name ?? ad.placement ?? "Unassigned";
       const current = buckets.get(name) ?? {
         placement: name,
         amount: 0,

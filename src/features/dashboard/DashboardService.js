@@ -136,6 +136,8 @@ export const getAdByPlacementCTR = async ({ startDate = "", endDate = "" } = {})
     const rows = (data ?? []).map((ad) => ({
       ...ad,
       placement_name: ad.placement?.name ?? null,
+      // The placement stays the location key the interface expects.
+      placement: ad.placement?.name ?? null,
       ctr: ad.impressions > 0 ? (ad.clicks / ad.impressions) * 100 : 0,
     }));
 
