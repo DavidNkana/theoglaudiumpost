@@ -57,9 +57,9 @@ vi.mock("@/components/MasonryGrid.vue", () => ({
   },
 }));
 
-vi.mock("@/components/PinCard.vue", () => ({
+vi.mock("@/components/NewspaperArticleCard.vue", () => ({
   default: {
-    name: "PinCard",
+    name: "NewspaperArticleCard",
     props: ["article", "isTopStory", "isFeatured", "isPopular"],
     template: `<div class="pin-card-stub" :data-id="article && article.id"
       :data-top="String(isTopStory)" :data-featured="String(isFeatured)"
@@ -67,9 +67,9 @@ vi.mock("@/components/PinCard.vue", () => ({
   },
 }));
 
-vi.mock("@/components/PinAdCard.vue", () => ({
+vi.mock("@/components/NewspaperAdCard.vue", () => ({
   default: {
-    name: "PinAdCard",
+    name: "NewspaperAdCard",
     props: ["ad"],
     template: `<div class="pin-ad-card-stub" :data-ad-id="ad && ad.id"></div>`,
   },
@@ -215,7 +215,7 @@ describe("NewspaperView", () => {
     );
   });
 
-  it("content computed mixes ads in after every 4 articles (cycling ads)", async () => {
+  it("content computed alternates article and ad (checkerboard)", async () => {
     getArticles.mockResolvedValueOnce(
       articlesResponse(
         [1, 2, 3, 4, 5, 6].map((id) => article(id)),
@@ -223,20 +223,45 @@ describe("NewspaperView", () => {
       )
     );
     getAds.mockResolvedValueOnce({
-      data: { ads: [{ id: "a1", placement_id: 1, status: "active" }] },
+      data: {
+        ads: [
+          { id: "a1", placement_name: "main_page_ad", status: "active" },
+        ],
+      },
     });
     const wrapper = mountView();
     await flushPromises();
 
-    // 6 articles + ads inserted at index 0 and index 4 => 2 ads
+    // 6 articles, an ad after each except the last => 5 ads
     expect(wrapper.findAll(".pin-card-stub").length).toBe(6);
-    expect(wrapper.findAll(".pin-ad-card-stub").length).toBe(2);
+    expect(wrapper.findAll(".pin-ad-card-stub").length).toBe(5);
+  });
+
+  it("content computed keeps the last item an article", async () => {
+    getArticles.mockResolvedValueOnce(
+      articlesResponse([1, 2, 3].map((id) => article(id)), 1)
+    );
+    getAds.mockResolvedValueOnce({
+      data: {
+        ads: [
+          { id: "a1", placement_name: "main_page_ad", status: "active" },
+        ],
+      },
+    });
+    const wrapper = mountView();
+    await flushPromises();
+
+    const items = wrapper.findAll(".masonry-items > *");
+    expect(items.length).toBe(5);
+    expect(items[items.length - 1].classes()).toContain("pin-card-stub");
   });
 
   it("content computed returns ads-only when there are no articles", async () => {
     getArticles.mockResolvedValueOnce(articlesResponse([], 1));
     getAds.mockResolvedValueOnce({
-      data: { ads: [{ id: "a1", placement_id: 1, status: "active" }] },
+      data: {
+        ads: [{ id: "a1", placement_name: "main_page_ad", status: "active" }],
+      },
     });
     const wrapper = mountView();
     await flushPromises();
@@ -261,8 +286,8 @@ describe("NewspaperView", () => {
     );
   });
 
-  it("fetchAd filters ads: placement_id===1 active in-range passes; others fail", async () => {
-    // 5 articles -> ad slots at index 0 and 4 -> renders ads[0] and ads[1]
+  it("fetchAd filters ads: main page placement, active, in-range passes; others fail", async () => {
+    // 5 articles -> an ad after each except the last -> renders ads[0..3]
     getArticles.mockResolvedValueOnce(
       articlesResponse([1, 2, 3, 4, 5].map((id) => article(id)), 1)
     );
@@ -271,25 +296,25 @@ describe("NewspaperView", () => {
     getAds.mockResolvedValueOnce({
       data: {
         ads: [
-          // passes: placement_id 1, active, within range (no dates)
-          { id: "pass1", placement_id: 1, status: "active" },
+          // passes: main page placement, active, within range (no dates)
+          { id: "pass1", placement_name: "main_page_ad", status: "active" },
           // passes via placement_info text + explicit valid date range
           {
             id: "pass2",
-            placement_id: 99,
+            placement_name: "something_else",
             placement_info: "Some MAIN PAGE AD here",
             status: "Active",
             placement_date: past,
             expiry_date: future,
           },
           // fails: wrong placement + no info
-          { id: "fail-placement", placement_id: 2, status: "active" },
+          { id: "fail-placement", placement_name: "sidebar_top", status: "active" },
           // fails: inactive
-          { id: "fail-status", placement_id: 1, status: "paused" },
+          { id: "fail-status", placement_name: "main_page_ad", status: "paused" },
           // fails: placement_date in the future
           {
             id: "fail-future",
-            placement_id: 1,
+            placement_name: "main_page_ad",
             status: "active",
             placement_date: future,
           },
@@ -319,7 +344,9 @@ describe("NewspaperView", () => {
   it("fetchAd reads ads from response.ads when response.data.ads is absent", async () => {
     getArticles.mockResolvedValueOnce(articlesResponse([], 1));
     getAds.mockResolvedValueOnce({
-      ads: [{ id: "fromTop", placement_id: 1, status: "active" }],
+      ads: [
+        { id: "fromTop", placement_name: "main_page_ad", status: "active" },
+      ],
     });
     const wrapper = mountView();
     await flushPromises();

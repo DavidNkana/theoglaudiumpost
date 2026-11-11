@@ -3,13 +3,13 @@ import {ref, computed, onMounted, onUnmounted, nextTick, watch, useTemplateRef} 
 // Vuex store no longer needed for articles
 // import { useStore } from "vuex";
 import MasonryGrid from "@/components/MasonryGrid.vue";
-import PinCard from "@/components/PinCard.vue";
+import NewspaperArticleCard from "@/components/NewspaperArticleCard.vue";
+import NewspaperAdCard from "@/components/NewspaperAdCard.vue";
 import ShimmerCard from "@/components/ShimmerCard.vue";
 import InfiniteLoading from "v3-infinite-loading";
 import "v3-infinite-loading/lib/style.css";
 import {getAdByPlacement, trackImpression, trackClick, getAllAdByPlacement, getAds} from "@/features/ads/AdsService";
 import {getArticles} from "@/features/articles/ArticlesService";
-import PinAdCard from "@/components/PinAdCard.vue";
 import dayjs from "dayjs";
 
 const props = defineProps({
@@ -35,6 +35,9 @@ const isLoadingAd = ref(false);
 const articlesData = ref([]);
 const hasMore = ref(true);
 const totalPages = ref(0);
+
+/** The placement every administrator-entered advertisement is filed under. */
+const MAIN_PAGE_AD_PLACEMENT = "main_page_ad";
 
 const isArchive = computed(() => props.mode === "archive");
 const now = dayjs();
@@ -158,31 +161,23 @@ const fetchAd = async () => {
     const adsData = response?.data?.ads || response?.ads || [];
     console.log('NewspaperView fetchAd: Fetched', adsData.length, 'ads from API');
 
-    // Filter for Main Page Ads that are active and within date range
+    // Filter for Main Page Ads that are active and within their run window.
+    // The placement is matched by name: the database stores a uuid.
     const now = new Date();
     const filteredAds = adsData.filter(ad => {
-      // Check placement_id === 1 (Main Page Ad)
-      const isMainPagePlacement = ad.placement_id === 1;
+      const isMainPagePlacement =
+        ad.placement_name === MAIN_PAGE_AD_PLACEMENT ||
+        ad.placement_info?.toLowerCase().includes("main page ad");
 
-      // Check placement_info contains "Main Page Ad"
-      const hasMainPageInfo = ad.placement_info?.toLowerCase().includes('main page ad');
+      const isActive = ad.status?.toLowerCase() === "active";
 
-      // Check status is active
-      const isActive = ad.status?.toLowerCase() === 'active';
-
-      // Check date range
       const placementDate = ad.placement_date ? new Date(ad.placement_date) : null;
       const expiryDate = ad.expiry_date ? new Date(ad.expiry_date) : null;
-      const isWithinDateRange = (!placementDate || placementDate <= now) &&
-                                (!expiryDate || expiryDate >= now);
+      const isWithinDateRange =
+        (!placementDate || placementDate <= now) &&
+        (!expiryDate || expiryDate >= now);
 
-      const passes = (isMainPagePlacement || hasMainPageInfo) && isActive && isWithinDateRange;
-
-      if (passes) {
-        console.log('NewspaperView fetchAd: Ad', ad.id, 'passes filters');
-      }
-
-      return passes;
+      return isMainPagePlacement && isActive && isWithinDateRange;
     });
 
     console.log('NewspaperView fetchAd:', filteredAds.length, 'ads pass filters');
@@ -200,9 +195,6 @@ const content = computed(() => {
   const articlesList = articles.value;
   const adsList = advertisements.value;
 
-  // Show an ad every 4 articles, cycling through all ads (loop back to first when exhausted)
-  const ARTICLES_PER_AD = 4;
-
   // No ads available - just return articles
   if (adsList.length === 0) {
     return articlesList.map(article => ({ isArticle: true, article }));
@@ -213,25 +205,22 @@ const content = computed(() => {
     return adsList.map(ad => ({ isArticle: false, ad }));
   }
 
+  // The feed is a checkerboard: article, ad, article, ad. An advertisement
+  // follows every article except the last, so the feed never ends on an
+  // advertisement. Advertisements cycle when there are more articles than ads.
   const mixedContent = [];
-  let adIndex = 0;
 
-  // Insert an ad after every ARTICLES_PER_AD articles
   for (let i = 0; i < articlesList.length; i++) {
-    // Add the article
     mixedContent.push({
       isArticle: true,
-      article: articlesList[i]
+      article: articlesList[i],
     });
 
-    // Insert the first ad after the 1st article, then every 4th article after that (1, 5, 9, ...)
-    if (i % ARTICLES_PER_AD === 0) {
-      // Cycle through ads using modulo - loops back to first ad when exhausted
+    if (i < articlesList.length - 1) {
       mixedContent.push({
         isArticle: false,
-        ad: adsList[adIndex % adsList.length]
+        ad: adsList[i % adsList.length],
       });
-      adIndex++;
     }
   }
 
@@ -289,7 +278,7 @@ const loadMore = ($state) => {
           :gap="8"
       >
         <template #item="{ item}">
-          <PinCard
+          <NewspaperArticleCard
               v-if="item.isArticle"
               :key="item.article.id"
               :article="item.article"
@@ -297,8 +286,10 @@ const loadMore = ($state) => {
               :isFeatured="item.article.type === 'featured'"
               :isPopular="item.article.type === 'popular'"
           />
-          <PinAdCard v-else
-                     :ad="item.ad"
+          <NewspaperAdCard
+              v-else
+              :key="'ad-' + item.ad.id"
+              :ad="item.ad"
           />
         </template>
         <template #empty>

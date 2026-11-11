@@ -25,7 +25,8 @@ const AD_COLUMNS =
   "id, title, description, business_name, business_id, campaign_id, image_url, images, " +
   "video_url, click_url, placement_id, status, placement_date, expiry_date, amount, " +
   "payment_status, payment_reference, payment_method, customer_name, customer_email, " +
-  "customer_phone, notes, tags, impressions, clicks, total_cost, created_at, updated_at";
+  "customer_phone, notes, tags, impressions, clicks, total_cost, created_at, updated_at, " +
+  "placement:ad_placements ( id, name, placement_info )";
 
 /**
  * Resolves placement names to their database ids.
@@ -73,6 +74,10 @@ const toAd = (ad) => ({
   ...withAliases(ad),
   files: Array.isArray(ad.images) ? ad.images : ad.images ? [ad.images] : [],
   image_url: ad.image_url ?? (Array.isArray(ad.images) ? ad.images[0] : null) ?? null,
+  // The placement is exposed by name as well as id: the interface addresses
+  // placements by name ("main_page_ad").
+  placement_name: ad.placement?.name ?? ad.placement_name ?? null,
+  placement_info: ad.placement?.placement_info ?? ad.placement_info ?? null,
 });
 
 /**
