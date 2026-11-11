@@ -336,10 +336,14 @@ onMounted(fetchMedia);
   color: #666;
   line-height: 1.5;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 5;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  flex: 1;
+  /* The summary sizes to its own content. Growing it (flex: 1) handed it a
+     height from the flex layout, which overrode the line clamp: the text then
+     overflowed the fixed-height card and was cut off mid-sentence, with no
+     ellipsis to show that it had been trimmed. */
+  flex: 0 1 auto;
 }
 
 /* ===== RESPONSIVE DESIGN ===== */
@@ -356,7 +360,7 @@ onMounted(fetchMedia);
 
   .card-summary {
     font-size: 0.95rem;
-    -webkit-line-clamp: 3;
+    -webkit-line-clamp: 6;
   }
 }
 
@@ -400,7 +404,7 @@ onMounted(fetchMedia);
   }
 
   .card-summary {
-    -webkit-line-clamp: 3;
+    -webkit-line-clamp: 6;
   }
 }
 
@@ -425,7 +429,7 @@ onMounted(fetchMedia);
 
   .card-summary {
     font-size: 0.85rem;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 5;
   }
 
   .date-text {
@@ -469,7 +473,7 @@ onMounted(fetchMedia);
 
   .card-summary {
     font-size: 0.8rem;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 5;
   }
 }
 
