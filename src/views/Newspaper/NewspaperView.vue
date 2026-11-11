@@ -275,6 +275,7 @@ const loadMore = ($state) => {
            :loading="isLoading"
            :empty="!isLoading && articles.length === 0"
           :column-width="300"
+          :columns="1"
           :gap="8"
       >
         <template #item="{ item}">

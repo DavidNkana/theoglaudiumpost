@@ -12,6 +12,16 @@ const props = defineProps({
     type: Number,
     default: 250
   },
+  /**
+   * Fixed number of columns.
+   *
+   * Leave unset for the responsive behaviour. Set it (for example to 1) for a
+   * single column feed, which is what a newspaper-style list needs on a phone.
+   */
+  columns: {
+    type: Number,
+    default: null
+  },
   gap: {
     type: Number,
     default: 16
@@ -32,6 +42,11 @@ const containerRef = ref(null);
 
 // Calculate number of columns based on container width and columnWidth
 const columns = computed(() => {
+  // A fixed column count overrides the responsive behaviour.
+  if (props.columns) {
+    return { default: props.columns };
+  }
+
   if (containerWidth.value === 0) {
     // Default columns before we measure the container
     return { default: 2 };
