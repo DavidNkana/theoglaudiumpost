@@ -449,7 +449,8 @@ describe("AdBanner.vue", () => {
     const style = wrapper.find(".ad-content").attributes("style");
     // The slot no longer reserves a fixed aspect box: the creative sizes it.
     expect(style).not.toContain("padding-bottom");
-    expect(style).toContain("max-height: 420px");
+    // A sidebar slot lets the creative run at its full height.
+    expect(style).toContain("max-height: 640px");
   });
 
   it("adContentStyle small size branch (260px max-height)", async () => {
@@ -497,7 +498,7 @@ describe("AdBanner.vue", () => {
     expect(style).toContain("max-height: 420px");
   });
 
-  it("adContentStyle large size branch (520px max-height)", async () => {
+  it("adContentStyle large size branch (440px max-height)", async () => {
     getAllAdByPlacement.mockResolvedValue(
       resp([
         {
@@ -516,7 +517,7 @@ describe("AdBanner.vue", () => {
     await settle();
 
     const style = wrapper.find(".ad-content").attributes("style");
-    expect(style).toContain("max-height: 520px");
+    expect(style).toContain("max-height: 440px");
   });
 
   it("startAdRotation timer preloads next ad images and rotates (nextAd present, with id)", async () => {
