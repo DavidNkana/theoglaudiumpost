@@ -430,17 +430,20 @@ const closeAd = () => {
  * Computed property to determine the aspect ratio style for the ad content container
  * Uses the placement to get the correct aspect ratio
  */
+/**
+ * The largest a creative is allowed to be in this slot.
+ */
+const adMaxHeight = computed(() => {
+  if (props.size === "small") return "260px";
+  if (props.size === "medium") return "420px";
+  return "520px";
+});
+
 const adContentStyle = computed(() => {
   // The advertisement is shown at its own size: the creative fills the space
   // it is given and the slot grows to match. Reserving a fixed aspect box and
   // fitting the picture inside it left a small picture floating in a large
   // empty card.
-  const maxHeight = (() => {
-    if (props.size === "small") return "260px";
-    if (props.size === "medium") return "420px";
-    return "520px";
-  })();
-
   return {
     position: "relative",
     width: "100%",
@@ -448,7 +451,7 @@ const adContentStyle = computed(() => {
     display: "flex",
     justifyContent: "center",
     alignItems: "flex-start",
-    maxHeight,
+    maxHeight: adMaxHeight.value,
   };
 });
 
@@ -462,7 +465,7 @@ const adImageStyle = computed(() => {
     width: "auto",
     height: "auto",
     maxWidth: "100%",
-    maxHeight: "100%",
+    maxHeight: adMaxHeight.value,
     objectFit: "contain",
   };
 });
@@ -572,8 +575,8 @@ const hasMultipleAds = computed(() => {
 .ad-container {
   width: 100%;
   margin-bottom: 1rem;
-  background-color: #f8f9fad1;
-  border: 1px solid #f8f9fad1;
+  background-color: transparent;
+  border: none;
   border-radius: 4px;
   max-width: 100%;
   overflow: hidden;
@@ -630,13 +633,13 @@ const hasMultipleAds = computed(() => {
 
 
 .ad-large .ad-home_banner {
-  height: 100px;
+  height: auto;
 }
 
 .ad-large .ad-in_article_top,
 .ad-in_article_mid,
 .ad-in_article_bottom {
-  height: 140px;
+  height: auto;
 }
 
 /* Specific styling for different ad placements */
@@ -646,7 +649,7 @@ const hasMultipleAds = computed(() => {
 .ad-sidebar_bottom {
   max-width: 100%;
 
-  height: 100px;
+  height: auto;
   margin-left: auto;
   margin-right: auto;
 }
@@ -741,20 +744,20 @@ const hasMultipleAds = computed(() => {
 /* Desktop constraints to prevent ads from being too large */
 @media (min-width: 992px) {
   .ad-large {
-    max-height: 250px;
+    max-height: 560px;
   }
 
   .ad-medium {
-    max-height: 200px;
+    max-height: 460px;
   }
 
   .ad-small {
-    max-height: 150px;
+    max-height: 300px;
   }
 
   /* Specific placement constraints */
   .ad-home_banner {
-    max-height: 180px;
+    max-height: 560px;
   }
 
   .ad-youtube_videos {
@@ -762,7 +765,7 @@ const hasMultipleAds = computed(() => {
   }
 
   .ad-news_articles {
-    max-height: 180px;
+    max-height: 560px;
   }
 
   /* Adjust ad card layout for better display */
@@ -810,11 +813,11 @@ const hasMultipleAds = computed(() => {
 @media (max-width: 991.98px) {
   
   .ad-large {
-    max-height: 200px;
+    max-height: 520px;
   }
 
   .ad-medium {
-    max-height: 180px;
+    max-height: 440px;
   }
 }
 
