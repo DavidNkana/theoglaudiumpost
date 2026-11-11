@@ -434,9 +434,12 @@ const closeAd = () => {
  * The largest a creative is allowed to be in this slot.
  */
 const adMaxHeight = computed(() => {
+  // A sidebar slot is a narrow column, so the creative can run its full
+  // height there — the same way the mobile feed shows it.
+  if (props.placement?.includes("sidebar")) return "640px";
   if (props.size === "small") return "260px";
   if (props.size === "medium") return "420px";
-  return "520px";
+  return "440px";
 });
 
 const adContentStyle = computed(() => {
