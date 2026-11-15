@@ -226,6 +226,29 @@ const content = computed(() => {
   return mixedContent;
 });
 
+/**
+ * The feed in a true zigzag.
+ *
+ * The content alternates article, advertisement, article, advertisement. The
+ * grid places them in pairs across the columns, so every second row is
+ * swapped: the advertisement moves to the left and the article to the right.
+ * The advertisement then zigzags down the page instead of sitting in a
+ * column of its own.
+ */
+const zigzagFeed = computed(() => {
+  const items = content.value;
+  const feed = [];
+
+  for (let i = 0; i < items.length; i += 2) {
+    const pair = items.slice(i, i + 2);
+    // Swap every second row.
+    if (i % 4 === 2) pair.reverse();
+    feed.push(...pair);
+  }
+
+  return feed;
+});
+
 // Initial load
 onMounted(() => {
   // fetchPosts() never rejects (its own .catch returns a resolved value),
@@ -274,7 +297,7 @@ const loadMore = ($state) => {
            advertisement sits beside an article and the next article follows
            below. -->
       <div class="newspaper-grid">
-        <template v-for="(item, index) in content" :key="item.isArticle ? item.article.id : 'ad-' + item.ad.id">
+        <template v-for="item in zigzagFeed" :key="item.isArticle ? item.article.id : 'ad-' + item.ad.id">
           <NewspaperArticleCard
               v-if="item.isArticle"
               :article="item.article"
