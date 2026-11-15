@@ -167,35 +167,43 @@ const sourceName = computed(() => {
 
 /* ===== Text above the picture ===== */
 .article-head {
-  padding: 14px 14px 10px;
+  padding: 12px 12px 8px;
 }
 
 .article-kicker {
   display: inline-block;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 0.7rem;
+  font-size: 0.66rem;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: #b58900;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .article-title {
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 1.3rem;
+  font-size: 1.1rem;
   font-weight: 700;
   line-height: 1.22;
-  margin: 0 0 8px;
+  margin: 0 0 6px;
   color: #111;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
 }
 
 .article-standfirst {
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 0.95rem;
-  line-height: 1.45;
+  font-size: 0.88rem;
+  line-height: 1.4;
   margin: 0;
   color: #3a3a3a;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
 }
 
 /* ===== Picture ===== */
@@ -240,7 +248,7 @@ const sourceName = computed(() => {
   align-items: baseline;
   gap: 8px;
   flex-wrap: wrap;
-  padding: 10px 14px 13px;
+  padding: 8px 12px 10px;
   border-top: 1px solid rgba(0, 0, 0, 0.08);
   font-family: Georgia, "Times New Roman", serif;
   font-size: 0.78rem;
@@ -269,10 +277,10 @@ const sourceName = computed(() => {
 
 /* ===== Lead story treatment ===== */
 .top-story .article-title {
-  font-size: 1.5rem;
+  font-size: 1.22rem;
 }
 
 .featured-story .article-title {
-  font-size: 1.35rem;
+  font-size: 1.15rem;
 }
 </style>

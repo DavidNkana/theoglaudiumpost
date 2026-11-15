@@ -2,7 +2,6 @@
 import {ref, computed, onMounted, onUnmounted, nextTick, watch, useTemplateRef} from "vue";
 // Vuex store no longer needed for articles
 // import { useStore } from "vuex";
-import MasonryGrid from "@/components/MasonryGrid.vue";
 import NewspaperArticleCard from "@/components/NewspaperArticleCard.vue";
 import NewspaperAdCard from "@/components/NewspaperAdCard.vue";
 import ShimmerCard from "@/components/ShimmerCard.vue";
@@ -270,35 +269,35 @@ const loadMore = ($state) => {
 <template>
   <div class="newspaper-view">
     <div ref="scrollTarget" class="newspaper-container">
-      <MasonryGrid
-           :items="content"
-           :loading="isLoading"
-           :empty="!isLoading && articles.length === 0"
-          :column-width="300"
-          :gap="8"
-      >
-        <template #item="{ item}">
+      <!-- The feed is a zigzag: article, advertisement, article, advertisement.
+           A grid flows the items across the columns row by row, so each
+           advertisement sits beside an article and the next article follows
+           below. -->
+      <div class="newspaper-grid">
+        <template v-for="(item, index) in content" :key="item.isArticle ? item.article.id : 'ad-' + item.ad.id">
           <NewspaperArticleCard
               v-if="item.isArticle"
-              :key="item.article.id"
               :article="item.article"
               :isTopStory="item.article.type === 'top'"
               :isFeatured="item.article.type === 'featured'"
               :isPopular="item.article.type === 'popular'"
+              class="newspaper-grid-cell"
           />
           <NewspaperAdCard
               v-else
-              :key="'ad-' + item.ad.id"
               :ad="item.ad"
+              class="newspaper-grid-cell"
           />
         </template>
-        <template #empty>
-          <div class="no-articles-message p-5 text-center w-100 text-dark">
-            <h3>No articles found</h3>
-            <p>There are no articles available for the selected category.</p>
-          </div>
-        </template>
-      </MasonryGrid>
+      </div>
+
+      <div
+          v-if="!isLoading && articles.length === 0"
+          class="no-articles-message p-5 text-center w-100 text-dark"
+      >
+        <h3>No articles found</h3>
+        <p>There are no articles available for the selected category.</p>
+      </div>
 
 
       <InfiniteLoading @infinite="loadMore" :distance="200">
@@ -364,9 +363,16 @@ const loadMore = ($state) => {
   min-height: 80vh;
 }
 
-.masonry-item {
+.newspaper-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.newspaper-grid-cell {
   width: 100%;
-  break-inside: avoid;
+  min-width: 0;
 }
 
 .infinite-loading-spinner {

@@ -38,25 +38,6 @@ vi.mock("v3-infinite-loading", () => ({
 }));
 
 // --- Mock heavy child components ---------------------------------------------
-// MasonryGrid: render the #item slot for every item so PinCard / PinAdCard
-// branches are exercised, and the #empty slot so its template renders.
-vi.mock("@/components/MasonryGrid.vue", () => ({
-  default: {
-    name: "MasonryGrid",
-    props: ["items", "loading", "empty", "columnWidth", "gap"],
-    template: `
-      <div class="masonry-grid-stub">
-        <div class="masonry-items">
-          <template v-for="(item, i) in items" :key="i">
-            <slot name="item" :item="item" />
-          </template>
-        </div>
-        <div class="masonry-empty"><slot name="empty" /></div>
-      </div>
-    `,
-  },
-}));
-
 vi.mock("@/components/NewspaperArticleCard.vue", () => ({
   default: {
     name: "NewspaperArticleCard",
@@ -251,7 +232,7 @@ describe("NewspaperView", () => {
     const wrapper = mountView();
     await flushPromises();
 
-    const items = wrapper.findAll(".masonry-items > *");
+    const items = wrapper.findAll(".newspaper-grid > *");
     expect(items.length).toBe(5);
     expect(items[items.length - 1].classes()).toContain("pin-card-stub");
   });
