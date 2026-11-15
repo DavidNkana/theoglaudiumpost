@@ -390,7 +390,10 @@ const loadMore = ($state) => {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
-  align-items: start;
+  /* The cards are aligned on their bottom edge: an advertisement is shorter
+     than an article, so lining the tops up left the article running well past
+     the bottom of the advertisement beside it. */
+  align-items: end;
 }
 
 .newspaper-grid-cell {
