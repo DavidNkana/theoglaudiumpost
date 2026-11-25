@@ -69,7 +69,8 @@ const linkTarget = computed(() => props.ad?.click_url || "#");
 <style scoped>
 .newspaper-ad {
   width: 100%;
-  margin-bottom: 10px;
+  margin-bottom: 0;
+  height: 100%;
   background-color: #ffffff;
   border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 6px;
@@ -80,12 +81,13 @@ const linkTarget = computed(() => props.ad?.click_url || "#");
 .ad-link {
   display: block;
   line-height: 0;
+  height: 100%;
 }
 
 .ad-image {
   display: block;
   width: 100%;
-  height: auto;
+  height: 100%;
   object-fit: cover;
 }
 </style>
