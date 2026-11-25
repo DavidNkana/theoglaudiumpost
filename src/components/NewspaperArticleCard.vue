@@ -151,7 +151,7 @@ const sourceName = computed(() => {
 
 <style scoped>
 .newspaper-article {
-  background-color: #ffffff;
+  background-color: #f9ebd0;
   border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 6px;
   overflow: hidden;
