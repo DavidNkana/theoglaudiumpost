@@ -397,6 +397,9 @@ const loadMore = ($state) => {
   width: 100%;
   min-width: 0;
   height: 100%;
+  /* Keep the portrait advertisements long instead of collapsing them to the
+     shorter article content. Both cells in a row share this height. */
+  min-height: 460px;
 }
 
 .infinite-loading-spinner {
