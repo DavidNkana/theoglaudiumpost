@@ -249,6 +249,18 @@ const zigzagFeed = computed(() => {
   return feed;
 });
 
+// Keep the zigzag order, but stack each side independently. A row-based grid
+// reserves the height of its tallest card and creates a large blank area under
+// the shorter ad; independent columns keep the next card close to the one
+// above it.
+const leftColumn = computed(() =>
+  zigzagFeed.value.filter((_, index) => index % 2 === 0),
+);
+
+const rightColumn = computed(() =>
+  zigzagFeed.value.filter((_, index) => index % 2 === 1),
+);
+
 // Initial load
 onMounted(() => {
   // fetchPosts() never rejects (its own .catch returns a resolved value),
@@ -297,21 +309,41 @@ const loadMore = ($state) => {
            advertisement sits beside an article and the next article follows
            below. -->
       <div class="newspaper-grid">
-        <template v-for="item in zigzagFeed" :key="item.isArticle ? item.article.id : 'ad-' + item.ad.id">
-          <NewspaperArticleCard
-              v-if="item.isArticle"
-              :article="item.article"
-              :isTopStory="item.article.type === 'top'"
-              :isFeatured="item.article.type === 'featured'"
-              :isPopular="item.article.type === 'popular'"
-              class="newspaper-grid-cell"
-          />
-          <NewspaperAdCard
-              v-else
-              :ad="item.ad"
-              class="newspaper-grid-cell"
-          />
-        </template>
+        <div class="newspaper-column">
+          <template v-for="item in leftColumn" :key="item.isArticle ? item.article.id : 'ad-' + item.ad.id">
+            <NewspaperArticleCard
+                v-if="item.isArticle"
+                :article="item.article"
+                :isTopStory="item.article.type === 'top'"
+                :isFeatured="item.article.type === 'featured'"
+                :isPopular="item.article.type === 'popular'"
+                class="newspaper-grid-cell"
+            />
+            <NewspaperAdCard
+                v-else
+                :ad="item.ad"
+                class="newspaper-grid-cell"
+            />
+          </template>
+        </div>
+
+        <div class="newspaper-column">
+          <template v-for="item in rightColumn" :key="item.isArticle ? item.article.id : 'ad-' + item.ad.id">
+            <NewspaperArticleCard
+                v-if="item.isArticle"
+                :article="item.article"
+                :isTopStory="item.article.type === 'top'"
+                :isFeatured="item.article.type === 'featured'"
+                :isPopular="item.article.type === 'popular'"
+                class="newspaper-grid-cell"
+            />
+            <NewspaperAdCard
+                v-else
+                :ad="item.ad"
+                class="newspaper-grid-cell"
+            />
+          </template>
+        </div>
       </div>
 
       <div
@@ -388,12 +420,16 @@ const loadMore = ($state) => {
 
 .newspaper-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
-  /* The cards are aligned on their bottom edge: an advertisement is shorter
-     than an article, so lining the tops up left the article running well past
-     the bottom of the advertisement beside it. */
-  align-items: end;
+  align-items: start;
+}
+
+.newspaper-column {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
 }
 
 .newspaper-grid-cell {

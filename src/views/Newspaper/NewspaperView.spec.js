@@ -129,14 +129,14 @@ describe("NewspaperView", () => {
     const wrapper = mountView();
     await flushPromises();
 
-    const cards = wrapper.findAll(".pin-card-stub");
+    const cards = wrapper.findAll(".newspaper-grid .pin-card-stub");
     expect(cards.length).toBe(3);
     // article_type "top" -> isTopStory true
-    expect(cards[0].attributes("data-top")).toBe("true");
+    expect(wrapper.find('[data-id="1"]').attributes("data-top")).toBe("true");
     // type "featured" -> isFeatured true
-    expect(cards[1].attributes("data-featured")).toBe("true");
+    expect(wrapper.find('[data-id="2"]').attributes("data-featured")).toBe("true");
     // default "regular" -> none set
-    expect(cards[2].attributes("data-top")).toBe("false");
+    expect(wrapper.find('[data-id="3"]').attributes("data-top")).toBe("false");
   });
 
   it("getArticles is called with latest-mode date filter (startDate set, endDate null)", async () => {
@@ -232,7 +232,7 @@ describe("NewspaperView", () => {
     const wrapper = mountView();
     await flushPromises();
 
-    const items = wrapper.findAll(".newspaper-grid > *");
+    const items = wrapper.findAll(".newspaper-grid .newspaper-grid-cell");
     expect(items.length).toBe(5);
     expect(items[items.length - 1].classes()).toContain("pin-card-stub");
   });
