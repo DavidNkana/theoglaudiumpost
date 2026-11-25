@@ -139,7 +139,6 @@ watch(() => props.article, fetchMedia, { immediate: true });
       <p class="featured-summary">{{ article.summary }}</p>
       <p class="featured-meta">
         <span v-if="authorText">By {{ authorText }}</span>
-        <span v-if="publisherText"> · {{ publisherText }}</span>
         <time v-if="publishedIso" class="ms-1" :datetime="publishedIso"> · {{ formattedTime }}</time>
       </p>
     </div>
@@ -188,7 +187,6 @@ watch(() => props.article, fetchMedia, { immediate: true });
     <div v-if="!minDetails" class="card-footer">
       <span class="card-meta">
         <span v-if="authorText">By {{ authorText }}</span>
-        <span v-if="publisherText"> · {{ publisherText }}</span>
         <time v-if="publishedIso" class="ms-1" :datetime="publishedIso">
           <i class="bi bi-clock"></i> {{ formattedTime }}
         </time>
@@ -259,6 +257,7 @@ watch(() => props.article, fetchMedia, { immediate: true });
   font-size: 1.5rem;
   font-weight: 700;
   line-height: 1.3;
+  text-transform: uppercase;
   margin: 0 0 12px 0;
   color: #ffffff;
 }
@@ -307,6 +306,7 @@ watch(() => props.article, fetchMedia, { immediate: true });
 }
 
 .card-title {
+  text-transform: uppercase;
   font-size: 1.05rem;
   font-weight: 600;
   line-height: 1.4;

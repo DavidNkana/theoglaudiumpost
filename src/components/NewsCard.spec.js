@@ -81,7 +81,7 @@ beforeEach(() => {
 
 describe("NewsCard.vue", () => {
   // ---------- FEATURED layout (v-if="featured") ----------
-  it("renders the featured layout with author, publisher and time meta", async () => {
+  it("renders the featured layout with author and time meta without the publisher", async () => {
     const { wrapper } = mountCard({
       props: {
         featured: true,
@@ -107,7 +107,7 @@ describe("NewsCard.vue", () => {
 
     const meta = wrapper.find(".featured-meta");
     expect(meta.text()).toContain("By Jane Doe");
-    expect(meta.text()).toContain("Daily News");
+    expect(meta.text()).not.toContain("Daily News");
 
     const time = wrapper.find(".featured-meta time");
     expect(time.exists()).toBe(true);
@@ -158,7 +158,7 @@ describe("NewsCard.vue", () => {
     const footer = wrapper.find(".card-footer");
     expect(footer.exists()).toBe(true);
     expect(footer.text()).toContain("By Bob");
-    expect(footer.text()).toContain("Gazette");
+    expect(footer.text()).not.toContain("Gazette");
 
     const time = footer.find("time");
     expect(time.exists()).toBe(true);

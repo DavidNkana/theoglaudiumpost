@@ -37,14 +37,14 @@ describe("components/NewspaperArticleCard", () => {
     });
   });
 
-  it("shows the headline, the short description and the sub text", () => {
+  it("shows the headline, the short description and the sub text without the source domain", () => {
     const wrapper = mountCard();
 
     expect(wrapper.find(".article-kicker").text()).toBe("Local Government");
     expect(wrapper.find(".article-title").text()).toBe(article.title);
     expect(wrapper.find(".article-standfirst").text()).toBe(article.summary);
     expect(wrapper.find(".article-date").text()).toBe("2 November 2026");
-    expect(wrapper.find(".article-source").text()).toBe("laudiumpost.co.za");
+    expect(wrapper.find(".article-source").exists()).toBe(false);
     expect(wrapper.find(".article-more").text()).toContain("Read more");
   });
 

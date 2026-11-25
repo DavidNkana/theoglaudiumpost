@@ -308,6 +308,7 @@ onMounted(fetchMedia);
 
 /* Title */
 .card-title {
+  text-transform: uppercase;
   margin: 0 0 8px 0;
   font-size: 1.1rem;
   font-weight: 600;

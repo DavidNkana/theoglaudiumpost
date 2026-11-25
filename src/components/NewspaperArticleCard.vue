@@ -94,18 +94,6 @@ const publishedDate = computed(() => {
   return value ? dayjs(value).format("D MMMM YYYY") : "";
 });
 
-/** The publication the story came from, shown in the sub text. */
-const sourceName = computed(() => {
-  const sources = props.article?.sources ?? [];
-  if (!sources.length) return "";
-
-  const first = sources[0];
-  try {
-    return new URL(first).hostname.replace(/^www\./, "");
-  } catch {
-    return first;
-  }
-});
 </script>
 
 <template>
@@ -142,7 +130,6 @@ const sourceName = computed(() => {
       <!-- Text below the picture -->
       <footer class="article-foot">
         <span v-if="publishedDate" class="article-date">{{ publishedDate }}</span>
-        <span v-if="sourceName" class="article-source">{{ sourceName }}</span>
         <span class="article-more">Read more →</span>
       </footer>
     </router-link>
@@ -191,6 +178,7 @@ const sourceName = computed(() => {
   line-height: 1.22;
   margin: 0 0 6px;
   color: #111;
+  text-transform: uppercase;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
