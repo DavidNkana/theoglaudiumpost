@@ -161,7 +161,9 @@ const sourceName = computed(() => {
 }
 
 .article-link {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   color: #1a1a1a;
   text-decoration: none;
 }
@@ -211,6 +213,8 @@ const sourceName = computed(() => {
 .article-picture {
   position: relative;
   width: 100%;
+  flex: 1;
+  min-height: 0;
   background-color: #f1f1f1;
 }
 
@@ -239,7 +243,7 @@ const sourceName = computed(() => {
 .article-image {
   display: block;
   width: 100%;
-  height: auto;
+  height: 100%;
   object-fit: cover;
 }
 
