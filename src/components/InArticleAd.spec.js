@@ -61,9 +61,8 @@ describe("InArticleAd.vue", () => {
 
     const anchors = wrapper.findAll("a");
     expect(anchors).toHaveLength(2);
-    expect(anchors[0].attributes("href")).toBe("https://example.com/one");
-    expect(anchors[0].attributes("target")).toBe("_blank");
-    expect(anchors[1].attributes("href")).toBe("https://example.com/two");
+    expect(anchors[0].attributes("href")).toBe("/advertisements/1");
+    expect(anchors[1].attributes("href")).toBe("/advertisements/2");
 
     const imgs = wrapper.findAll("img");
     expect(imgs).toHaveLength(2);

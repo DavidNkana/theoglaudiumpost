@@ -61,8 +61,7 @@ describe("RotatingAd.vue", () => {
 
     const link = wrapper.find("a");
     expect(link.exists()).toBe(true);
-    expect(link.attributes("href")).toBe(sampleAds[0].linkUrl);
-    expect(link.attributes("target")).toBe("_blank");
+    expect(link.attributes("href")).toBe("/advertisements/1");
 
     const img = wrapper.find("img");
     expect(img.attributes("src")).toBe(sampleAds[0].imageUrl);

@@ -109,7 +109,7 @@ describe("PopupAd", () => {
     expect(img.exists()).toBe(true);
     expect(img.attributes("src")).toBe(urlFor(1));
     expect(img.attributes("alt")).toBe("Single");
-    expect(wrapper.find("a").attributes("href")).toBe("https://single.example");
+    expect(wrapper.find("a").attributes("href")).toBe("/advertisements/7");
     // Single image -> no image-controls, single ad -> no ad-controls
     expect(wrapper.find(".image-controls").exists()).toBe(false);
     expect(wrapper.find(".ad-controls").exists()).toBe(false);

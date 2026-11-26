@@ -59,8 +59,7 @@ describe("SidebarAd.vue", () => {
 
     const links = wrapper.findAll("a");
     expect(links).toHaveLength(2);
-    expect(links[0].attributes("href")).toBe(adA.linkUrl);
-    expect(links[0].attributes("target")).toBe("_blank");
+    expect(links[0].attributes("href")).toBe("/advertisements/1");
 
     const imgs = wrapper.findAll("img");
     expect(imgs[0].attributes("src")).toBe(adA.image);

@@ -21,7 +21,7 @@
       :style="adContentStyle"
     >
       <!-- <span class="badge ad-label p-1">Advertisement</span> -->
-      <a :href="ad.click_url" target="_blank" class="ad-card">
+      <a :href="advertisementDetailPath(ad.id)" class="ad-card">
         <span v-if="showLabel" class="badge badge-info ad-label p-1">Advertisement</span>
         <img
           :src="currentImageUrl"
@@ -113,6 +113,7 @@ import { HOME_BANNER, delay } from "@/utils";
 import { ref, onMounted, computed, watch, onBeforeUnmount } from "vue";
 import { getMediaObjectUrl } from "@/features/media/MediaService";
 import { SHOW_ADS } from "@/config/app";
+import { advertisementDetailPath } from "@/features/ads/adNavigation";
 
 const showAds = SHOW_ADS;
 

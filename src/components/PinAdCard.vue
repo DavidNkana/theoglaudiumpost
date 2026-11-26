@@ -5,6 +5,7 @@ import {
   trackImpression,
   trackClick,
 } from "@/features/ads/AdsService";
+import { advertisementDetailPath, getSafeExternalUrl } from "@/features/ads/adNavigation";
 
 const props = defineProps({
   ad: {
@@ -32,6 +33,7 @@ const imageUrl = ref(null);
 const hasTrackedImpression = ref(false);
 const adCardRef = ref(null);
 const isVideoDialogOpen = ref(false);
+const safeClickUrl = computed(() => getSafeExternalUrl(props.ad?.click_url));
 
 // Extract YouTube video ID from various URL formats.
 // Only ever called (via the computeds below) with `props.ad.video_url`, and
@@ -258,9 +260,8 @@ const handleEscapeKey = (event) => {
   }
 };
 
-// Handle ad click - redirect to click_url and track click
+// Card clicks open the internal detail page; the detail CTA owns external navigation.
 const handleAdClick = (event) => {
-  event.preventDefault();
   triggerHapticFeedback();
 
   // Track click before redirecting
@@ -269,28 +270,15 @@ const handleAdClick = (event) => {
     trackClick(props.ad.id);
   }
 
-  if (props.ad?.click_url) {
-    // Open external ad click URLs in a new tab. Internal ('/'-prefixed) URLs
-    // are intentionally not navigated here (no router is wired into this
-    // standalone ad card), so they fall through and the native <a href> handles
-    // them after the default-prevented tracking click.
-    if (props.ad.click_url.startsWith('http')) {
-      window.open(props.ad.click_url, '_blank', 'noopener,noreferrer');
-    }
-  } else {
-    console.warn('No click URL provided for ad');
-  }
 };
 </script>
 
 <template>
   <a
       ref="adCardRef"
-      :href="ad.click_url || '#'"
+      :href="advertisementDetailPath(ad.id)"
       class="ad-card-link"
       @click="handleAdClick"
-      target="_blank"
-      rel="noopener noreferrer"
       :data-ad-id="ad.id"
   >
     <div class="pin-ad-wrapper" :class="{ 'wide-wrapper': isWideCard }">
@@ -378,12 +366,12 @@ const handleAdClick = (event) => {
           </div>
           <!-- Full-width Visit Site button - ALWAYS visible -->
           <a
-              :href="ad.click_url || '#'"
+              :href="safeClickUrl || '#'"
               class="video-dialog-visit-btn-full"
-              :class="{ 'disabled': !ad.click_url }"
+              :class="{ 'disabled': !safeClickUrl }"
               target="_blank"
               rel="noopener noreferrer"
-              @click.stop="ad.click_url ? trackClick(ad.id) : $event.preventDefault()"
+              @click.stop="safeClickUrl ? trackClick(ad.id) : $event.preventDefault()"
           >
             <i class="bi bi-globe me-2"></i>
             Visit Site

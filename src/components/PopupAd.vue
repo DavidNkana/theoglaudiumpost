@@ -16,8 +16,7 @@
       </div>
 
       <a
-        :href="currentAd?.click_url"
-        target="_blank"
+         :href="advertisementDetailPath(currentAd?.id)"
         @click="handleClick(currentAd?.id)"
         class="link"
       >
@@ -85,6 +84,7 @@ import {
 } from "@/features/ads/AdsService";
 import { getAdDimensions, delay } from "@/utils";
 import { getMediaObjectUrl } from "@/features/media/MediaService";
+import { advertisementDetailPath } from "@/features/ads/adNavigation";
 
 const visible = ref(true);
 const ads = ref([]);

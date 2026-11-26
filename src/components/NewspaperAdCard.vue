@@ -10,6 +10,7 @@
  */
 
 import { computed, ref, watch } from "vue";
+import { advertisementDetailPath } from "@/features/ads/adNavigation";
 
 const props = defineProps({
   ad: {
@@ -45,15 +46,13 @@ const resolveImage = () => {
 
 watch(() => props.ad, resolveImage, { immediate: true });
 
-const linkTarget = computed(() => props.ad?.click_url || "#");
+const linkTarget = computed(() => advertisementDetailPath(props.ad?.id));
 </script>
 
 <template>
   <div class="newspaper-ad">
     <a
         :href="linkTarget"
-        target="_blank"
-        rel="noopener noreferrer"
         class="ad-link"
     >
       <img

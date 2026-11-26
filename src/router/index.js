@@ -181,6 +181,13 @@ const routes = [
         meta: { title: "YouTube Podcasts Videos" },
         component: () => import("@/views/YouTube/Index.vue"),
       },
+      {
+        path: "advertisements/:id",
+        name: "AdvertisementDetail",
+        props: true,
+        meta: { title: "Advertisement" },
+        component: () => import("@/views/Advertisements/Detail.vue"),
+      },
     ],
   },
   {

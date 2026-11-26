@@ -11,7 +11,7 @@
           <strong class="text-success">Ad</strong>
           <button type="button" class="btn-close" @click="closeAd"></button>
         </div>
-        <div class="mt-2" @click="handleClick(ads[0].id)">
+        <a class="mt-2 d-block text-decoration-none" :href="advertisementDetailPath(ads[0].id)" @click="handleClick(ads[0].id)">
           <img
             :src="ads[0].image"
             :alt="ads[0].title"
@@ -19,15 +19,13 @@
           />
           <p class="mt-2 small">
             {{ ads[0].title }} <br />
-            <a
+            <span
               v-if="ads[0].click_url"
-              href="https://advertiser-site.com"
-              target="_blank"
               class="text-success fw-bold"
-              >Visit</a
+              >View details</span
             >
           </p>
-        </div>
+        </a>
       </div>
     </transition>
   </div>
@@ -37,6 +35,7 @@
 import { ref, watch, onMounted } from "vue";
 import { useAds } from "@/composables/useAds";
 import { trackClick, trackImpression } from "@/features/ads/AdsService";
+import { advertisementDetailPath } from "@/features/ads/adNavigation";
 
 const showAd = ref(false);
 let adTimeout = null;

@@ -118,8 +118,7 @@ describe("PinAdCard.vue", () => {
     });
     // business_name set but minDetails true -> not rendered
     expect(wrapper.find(".ad-business-info").exists()).toBe(false);
-    // no click_url -> href '#'
-    expect(wrapper.find("a.ad-card-link").attributes("href")).toBe("#");
+    expect(wrapper.find("a.ad-card-link").attributes("href")).toBe("/advertisements/5");
   });
 
   // ---------------------------------------------------------------------------
@@ -464,7 +463,7 @@ describe("PinAdCard.vue", () => {
   // ---------------------------------------------------------------------------
   // handleAdClick branches
   // ---------------------------------------------------------------------------
-  it("handleAdClick opens http click_url in new tab and tracks click", async () => {
+  it("handleAdClick tracks click without opening click_url", async () => {
     const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
     Object.defineProperty(navigator, "vibrate", { value: vi.fn(), configurable: true });
 
@@ -474,11 +473,7 @@ describe("PinAdCard.vue", () => {
     await wrapper.find("a.ad-card-link").trigger("click");
 
     expect(trackClick).toHaveBeenCalledWith(50);
-    expect(openSpy).toHaveBeenCalledWith(
-      "https://landing.example.com",
-      "_blank",
-      "noopener,noreferrer"
-    );
+    expect(openSpy).not.toHaveBeenCalled();
     openSpy.mockRestore();
   });
 

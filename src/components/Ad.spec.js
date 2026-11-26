@@ -87,14 +87,14 @@ describe("Ad.vue", () => {
     expect(img.attributes("alt")).toBe(adWithLink.title);
     expect(wrapper.text()).toContain("Buy Widgets Now");
 
-    // click_url truthy -> the "Visit" anchor renders
+    // Card click opens the internal detail page, not click_url.
     const link = wrapper.find("a");
     expect(link.exists()).toBe(true);
-    expect(link.text()).toBe("Visit");
-    expect(link.attributes("href")).toBe("https://advertiser-site.com");
+    expect(link.attributes("href")).toBe("/advertisements/42");
+    expect(link.text()).toContain("View details");
   });
 
-  it("does NOT render the Visit link when the ad has no click_url (v-if false branch)", async () => {
+  it("still renders the detail link when the ad has no click_url", async () => {
     adsRef.value = [adWithoutLink];
     const wrapper = mount(Ad);
 
@@ -103,8 +103,7 @@ describe("Ad.vue", () => {
 
     // Popup is shown...
     expect(wrapper.find(".bg-white").exists()).toBe(true);
-    // ...but the click_url v-if is false, so no anchor
-    expect(wrapper.find("a").exists()).toBe(false);
+    expect(wrapper.find("a").attributes("href")).toBe("/advertisements/7");
     expect(wrapper.text()).toContain("Plain Ad");
   });
 

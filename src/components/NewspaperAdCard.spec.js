@@ -26,13 +26,12 @@ describe("components/NewspaperAdCard", () => {
     expect(wrapper.findAll("p")).toHaveLength(0);
   });
 
-  it("links the creative to the advertiser", () => {
+  it("links the creative to the internal advertisement detail", () => {
     const wrapper = mountCard();
 
     const link = wrapper.find("a.ad-link");
-    expect(link.attributes("href")).toBe("https://laudiummarket.co.za");
-    expect(link.attributes("target")).toBe("_blank");
-    expect(link.attributes("rel")).toContain("noopener");
+    expect(link.attributes("href")).toBe("/advertisements/ad1");
+    expect(link.attributes("target")).toBeUndefined();
   });
 
   it("falls back to the first image when there is no primary image", () => {
@@ -63,9 +62,9 @@ describe("components/NewspaperAdCard", () => {
     expect(wrapper.find(".ad-image").attributes("src")).toContain("placehold.co");
   });
 
-  it("links to nowhere when the advertisement has no target", () => {
+  it("still links to the detail page when the advertisement has no target", () => {
     const wrapper = mountCard({ ad: { ...ad, click_url: null } });
 
-    expect(wrapper.find("a.ad-link").attributes("href")).toBe("#");
+    expect(wrapper.find("a.ad-link").attributes("href")).toBe("/advertisements/ad1");
   });
 });

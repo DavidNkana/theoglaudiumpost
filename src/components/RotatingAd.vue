@@ -1,8 +1,7 @@
 <template>
   <div v-if="ads.length" class="w-full">
     <a
-      :href="currentAd.linkUrl"
-      target="_blank"
+      :href="advertisementDetailPath(currentAd.id)"
       @click="trackClick(currentAd.id)"
     >
       <img
@@ -17,6 +16,7 @@
 <script setup>
   import { ref, onMounted, onUnmounted, computed } from "vue";
   import { useAds } from "@/composables/useAds";
+  import { advertisementDetailPath } from "@/features/ads/adNavigation";
 
   const props = defineProps({ placement: String });
   const { ads, trackClick } = useAds(props.placement);
