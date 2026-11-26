@@ -136,6 +136,10 @@ onMounted(async () => {
 
 <template>
   <div class="youtube-videos">
+    <div class="podcasts-coming-soon" role="status">
+      Podcasts coming soon!!!
+    </div>
+
     <template v-if="!isLoading">
       <div class="mb-4">
         <!-- <label for="searchQuery" class="form-label">Search YouTube</label> -->
@@ -223,6 +227,20 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.podcasts-coming-soon {
+  margin: 0 0 1.5rem;
+  padding: 1.25rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--secondary) 45%, transparent);
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--secondary) 18%, transparent);
+  color: var(--primary-dark);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.5rem, 4vw, 2.35rem);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+}
+
 .search-btn {
   background-color: var(--secondary);
   color: var(--primary-dark);
@@ -268,6 +286,11 @@ onMounted(async () => {
 
 /* Responsive adjustments */
 @media (max-width: 767.98px) {
+  .podcasts-coming-soon {
+    margin: 0 0 1rem;
+    padding: 1rem 0.75rem;
+  }
+
   .youtube-ad-banner {
     margin: 1rem 0;
   }

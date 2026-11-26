@@ -147,6 +147,10 @@ describe("YouTube/Index.vue", () => {
     expect(btn.text()).toContain("Search");
     expect(btn.attributes("disabled")).toBeUndefined();
 
+    expect(wrapper.find(".podcasts-coming-soon").text()).toBe(
+      "Podcasts coming soon!!!"
+    );
+
     // videos.length > 0 branch -> the grid + one VideoCard per video.
     expect(wrapper.find(".row.row-cols-1").exists()).toBe(true);
     expect(wrapper.findAll(".video-card-stub")).toHaveLength(2);
