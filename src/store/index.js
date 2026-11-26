@@ -17,6 +17,7 @@ import articles from "./modules/articles";
 import notices from "./modules/notices";
 import tags from "./modules/tags";
 import youtube from "./modules/youtube";
+import communityPosts from "./modules/communityPosts";
 /**
  * Create the Vuex store instance
  */
@@ -83,6 +84,7 @@ const store = createStore({
     notices,  // Manages community notices
     tags,     // Manages content tags
     youtube,  // Manages YouTube video integration
+    communityPosts,
   },
 });
 

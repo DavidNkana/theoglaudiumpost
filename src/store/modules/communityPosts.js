@@ -1,0 +1,6 @@
+import { listCommunityPosts, getCommunityPostBySlug, createCommunityPost, updateCommunityPost, deleteCommunityPost } from "@/features/community/CommunityPostsService";
+const state = () => ({ posts: [], current: null, loading: false, error: null });
+const getters = { posts: (state) => state.posts, current: (state) => state.current };
+const mutations = { setPosts(state, posts) { state.posts = posts; }, setCurrent(state, post) { state.current = post; }, setLoading(state, value) { state.loading = value; }, setError(state, error) { state.error = error; } };
+const actions = { async fetchPosts({ commit }, filters) { commit("setLoading", true); try { const response = await listCommunityPosts(filters); commit("setPosts", response.data); return response.data; } catch (error) { commit("setError", error.message); throw error; } finally { commit("setLoading", false); } }, async fetchPostBySlug({ commit }, slug) { const response = await getCommunityPostBySlug(slug); commit("setCurrent", response.data); return response.data; }, async createPost(_, data) { return (await createCommunityPost(data)).data; }, async updatePost(_, { id, data }) { return (await updateCommunityPost(id, data)).data; }, async deletePost(_, id) { return (await deleteCommunityPost(id)).data; } };
+export default { namespaced: true, state, getters, mutations, actions };

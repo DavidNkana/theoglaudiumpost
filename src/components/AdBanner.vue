@@ -22,7 +22,7 @@
     >
       <!-- <span class="badge ad-label p-1">Advertisement</span> -->
       <a :href="ad.click_url" target="_blank" class="ad-card">
-        <span class="badge badge-info ad-label p-1">Advertisement</span>
+        <span v-if="showLabel" class="badge badge-info ad-label p-1">Advertisement</span>
         <img
           :src="currentImageUrl"
           :alt="ad.title"
@@ -191,6 +191,11 @@ const props = defineProps({
    */
   showClose: {
     default: false,
+    type: Boolean,
+  },
+
+  showLabel: {
+    default: true,
     type: Boolean,
   },
   

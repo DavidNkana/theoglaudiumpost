@@ -98,7 +98,7 @@ const routes = [
             meta: {
               title: "Notice",
             },
-            component: () => import("@/views/Community/Notice.vue"),
+            component: () => import("@/views/Community/CommunityRouteDetail.vue"),
           },
         ],
       },
@@ -474,6 +474,14 @@ const routes = [
             component: () =>
               import("@/views/Admin/Announcements/Categories.vue"),
           },
+        ],
+      },
+      {
+        path: "community-posts",
+        children: [
+          { path: "", name: "CommunityPostsManagement", meta: { title: "Manage Community Posts", requiresAuth: true }, component: () => import("@/views/Admin/CommunityPosts/Index.vue") },
+          { path: "create", name: "CreateCommunityPost", meta: { title: "Create Community Post", requiresAuth: true }, component: () => import("@/views/Admin/CommunityPosts/Form.vue") },
+          { path: "edit/:id", name: "EditCommunityPost", meta: { title: "Edit Community Post", requiresAuth: true }, component: () => import("@/views/Admin/CommunityPosts/Form.vue") },
         ],
       },
     ],

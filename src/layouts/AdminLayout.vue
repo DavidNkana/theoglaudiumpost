@@ -119,6 +119,12 @@
             />
 
             <li class="nav-item">
+              <router-link to="/admin/community-posts" class="nav-link" active-class="active">
+                <i class="bi bi-images me-2"></i><span>Community Posts</span>
+              </router-link>
+            </li>
+
+            <li class="nav-item">
               <a
                   href="#"
                   class="nav-link"

@@ -15,6 +15,7 @@ import {
   SIDEBAR_MID,
 } from "@/utils";
 import AdBanner from "@/components/AdBanner.vue";
+import CommunityPostGrid from "./CommunityPostGrid.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -204,6 +205,7 @@ const shouldShowAdAfter = (index) => {
 </script>
 <template>
   <div class="container py-5">
+    <CommunityPostGrid />
     <!-- Component Start -->
     <div class="row mb-4">
       <div class="col-md-6 heading">
@@ -342,6 +344,7 @@ const shouldShowAdAfter = (index) => {
                   <AdBanner
                     size="medium"
                     :placement="IN_ARTICLE_MID"
+                    :show-label="false"
                     class="notice-ad-banner"
                   />
                 </div>
